@@ -71,8 +71,6 @@
         <param field="Mode3" label="Huisnummer" width="75px" required="false" default="" />
         <param field="Mode4" label="Huisnummer suffix" width="75px" required="false" default="" />
         <param field="Mode5" label="Extra: Hostname / Straat / BPName / Companycode / CSV-pad / Gemeente(afvalinfo)" width="300px" required="false" default="" />
-        <param field="Username" label="Dagelijkse verversingstijd (HH:MM)" width="100px" required="false" default="02:30" />
-        <param field="Password" label="Aantal te tonen events" width="75px" required="false" default="3" />
     </params>
 </plugin>
 """
@@ -88,6 +86,53 @@ import urllib.parse
 import urllib.error
 import threading
 from typing import List, Dict, Optional
+
+# --------------------------------------------------------------------------------------------
+# config.txt helper
+# --------------------------------------------------------------------------------------------
+
+_PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
+_CONFIG_FILE = os.path.join(_PLUGIN_DIR, 'config.txt')
+
+_CONFIG_DEFAULTS: Dict[str, str] = {
+    'UpdateTime':  '02:30',
+    'ShowEvents':  '3',
+    'VandaagTot':  '16:00',
+    'MorgenVanaf': '16:00',
+}
+
+
+def _read_config() -> Dict[str, str]:
+    """Lees config.txt en retourneer key=value mapping (met defaults als fallback)."""
+    cfg = dict(_CONFIG_DEFAULTS)
+    try:
+        with open(_CONFIG_FILE, 'r', encoding='utf-8') as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if '=' in line:
+                    key, _, val = line.partition('=')
+                    cfg[key.strip()] = val.strip()
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        try:
+            import Domoticz as _Domoticz
+            _Domoticz.Error(f'[GC] Could not read config.txt: {exc}')
+        except Exception:
+            pass
+    return cfg
+
+
+def _parse_hhmm_to_min(val: str, default: int) -> int:
+    """Vertaal 'HH:MM' string naar minuten na middernacht; retourneert *default* bij fouten."""
+    try:
+        h_s, m_s = val.strip().split(':')
+        return int(h_s) * 60 + int(m_s)
+    except (ValueError, AttributeError):
+        return default
+
 
 # --------------------------------------------------------------------------------------------
 # Dutch date/time helpers
@@ -1308,7 +1353,7 @@ MODULES: Dict[str, GarbageModule] = {
 
 class BasePlugin:
     UNIT_TEXT   = 1  # hoofd GarbageCalendar text-device
-    UNIT_NOTIFY = 2  # "Vandaag/Morgen <soort>" - zichtbaar 00:00-15:59 / 16:00-23:59
+    UNIT_NOTIFY = 2  # "Vandaag/Morgen <soort>" - tijden configureerbaar via config.txt
     HEARTBEAT_SECS = 30
 
     def __init__(self):
@@ -1321,6 +1366,8 @@ class BasePlugin:
         self._show_events = 3
         self._update_hour = 2
         self._update_min = 30
+        self._vandaag_tot_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['VandaagTot'], 16 * 60)
+        self._morgen_vanaf_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['MorgenVanaf'], 16 * 60)
         self._last_fetch_date: Optional[datetime.date] = None
         self._cached_results: List[Dict] = []
         self._fetching = False
@@ -1337,19 +1384,20 @@ class BasePlugin:
         self._extra = Parameters.get('Mode5', '').strip()
         self._date_fmt = 'wd dd mmm'
 
+        cfg = _read_config()
+
         try:
-            self._show_events = max(1, int(Parameters.get('Password', '3') or '3'))
+            self._show_events = max(1, int(cfg.get('ShowEvents', '3') or '3'))
         except ValueError:
             self._show_events = 3
 
-        update_time = Parameters.get('Username', '02:30').strip()
-        try:
-            h, m = update_time.split(':')
-            self._update_hour = int(h)
-            self._update_min = int(m)
-        except (ValueError, AttributeError):
-            self._update_hour = 2
-            self._update_min = 30
+        update_time = cfg.get('UpdateTime', '02:30').strip()
+        update_min = _parse_hhmm_to_min(update_time, 2 * 60 + 30)
+        self._update_hour = update_min // 60
+        self._update_min = update_min % 60
+
+        self._vandaag_tot_min = _parse_hhmm_to_min(cfg.get('VandaagTot', '16:00'), 16 * 60)
+        self._morgen_vanaf_min = _parse_hhmm_to_min(cfg.get('MorgenVanaf', '16:00'), 16 * 60)
 
         try:
             if "Garbage" not in Images:
@@ -1370,7 +1418,9 @@ class BasePlugin:
             f'GarbageCalendar started | module: {self._module.name} | '
             f'postcode: {self._zipcode} | huisnr: {self._housenr}{self._housenrsuf} | '
             f'refresh at: {self._update_hour:02d}:{self._update_min:02d} | '
-            f'events: {self._show_events}'
+            f'events: {self._show_events} | '
+            f'vandaag tot: {self._vandaag_tot_min // 60:02d}:{self._vandaag_tot_min % 60:02d} | '
+            f'morgen vanaf: {self._morgen_vanaf_min // 60:02d}:{self._morgen_vanaf_min % 60:02d}'
         )
 
         if self.UNIT_TEXT not in Devices:
@@ -1531,10 +1581,10 @@ class BasePlugin:
             display_type = apply_type_alias(first['type'])
 
             if first['date'] == today:
-                if current_minutes < 16 * 60:
+                if current_minutes < self._vandaag_tot_min:
                     notify_text = f"Vandaag {display_type}"
             elif first['date'] == tomorrow:
-                if current_minutes >= 16 * 60:
+                if current_minutes >= self._morgen_vanaf_min:
                     notify_text = f"<span style='color:white;'>Morgen</span> {display_type}"
 
         if self.UNIT_NOTIFY not in Devices:
