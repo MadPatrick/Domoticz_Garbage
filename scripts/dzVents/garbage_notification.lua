@@ -47,10 +47,15 @@ return {
         local sValue = garbageDevice.text or ''
 
         -- ── Extraheer de eerste regel ─────────────────────────────────────────
-        -- De plugin schrijft regels gescheiden door '\n' (of '<br>' bij iconen).
-        local firstLine = sValue:match('([^\n]+)') or ''
+        -- De plugin schrijft regels gescheiden door '\n' (geen iconen) of
+        -- '<br>' (wanneer de API icoon-URLs levert).  Probeer eerst '<br>',
+        -- val terug op '\n'.
+        local firstLine = sValue:match('^(.-)<br%s*/?%s*>') or sValue:match('([^\n]+)') or ''
 
-        -- Verwijder eventuele HTML-tags (bijv. <img ...> voor iconen)
+        -- Bewaar het eventuele <img>-icoon-tag voor gebruik in het bericht.
+        local iconTag = firstLine:match('<img[^>]+>') or ''
+
+        -- Verwijder alle overige HTML-tags zodat alleen de tekst overblijft.
         firstLine = firstLine:gsub('<[^>]+>', '')
 
         -- Trim witruimte
@@ -99,14 +104,14 @@ return {
         local message = ''
 
         if pickupEpoch == todayEpoch then
-            -- Ophaal vandaag: toon "Vandaag <soort>" tot 14:00
+            -- Ophaal vandaag: toon "<icon> Vandaag <soort>" tot 14:00
             if currentMinutes < 14 * 60 then
-                message = 'Vandaag ' .. gtype
+                message = iconTag .. 'Vandaag ' .. gtype
             end
         elseif pickupEpoch == tomorrowEpoch then
-            -- Ophaal morgen: toon "Morgen <soort>" vanaf 16:00
+            -- Ophaal morgen: toon "<icon> Morgen <soort>" vanaf 16:00
             if currentMinutes >= 16 * 60 then
-                message = 'Morgen ' .. gtype
+                message = iconTag .. 'Morgen ' .. gtype
             end
         end
 
