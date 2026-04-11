@@ -129,12 +129,9 @@ return {
                 extraMessage = firstLine
             end
         elseif pickupEpoch == tomorrowEpoch then
-            -- Ophaal morgen: toon "<icon> Morgen <soort>" vanaf 16:00
+            -- Ophaal morgen: toon "<icon> Morgen <soort>" en eerste regel vanaf 16:00
             if currentMinutes >= 16 * 60 then
                 message = iconTag .. 'Morgen ' .. gtype
-            end
-            -- Extra device: toon eerste regel vanaf 16:00
-            if currentMinutes >= 16 * 60 then
                 extraMessage = firstLine
             end
         end
