@@ -1509,7 +1509,7 @@ class BasePlugin:
         if not future:
             text = 'Geen ophaaldata beschikbaar'
         else:
-            lines = []
+            rows = []
             for r in future:
                 date_str = format_date(r['date'], self._date_fmt)
                 display_type = apply_type_alias(r['type'])
@@ -1518,27 +1518,27 @@ class BasePlugin:
                 if icon_url:
                     # Module provided a real image URL (e.g. opzet_api): use an inline img tag
                     safe_url = _html.escape(icon_url, quote=True)
-                    icon_html = (
+                    type_html = (
                         f'<img src="{safe_url}" '
                         f'style="height:18px;vertical-align:middle;margin-right:4px;">'
-                    )
-                    lines.append(
-                        f"{icon_html}"
-                        f"&#128197; <b><span style='color:#969696;'>{date_str}</span></b> "
                         f"{display_type}"
                     )
                 else:
                     # Use HTML entity icon + coloured label from WASTE_ICONS
-                    icon_html = WASTE_ICONS.get(
+                    type_html = WASTE_ICONS.get(
                         display_type,
                         f"<span style='color:#999;'>{display_type}</span>"
                     )
-                    lines.append(
-                        f"&#128197; <b><span style='color:#969696;'>{date_str}</span></b> "
-                        f"{icon_html}"
-                    )
 
-            text = '<br>'.join(lines)
+                date_cell = (
+                    f"<td style='white-space:nowrap;padding-right:6px;'>"
+                    f"&#128197; <b><span style='color:#969696;'>{date_str}</span></b>"
+                    f"</td>"
+                )
+                type_cell = f"<td style='white-space:nowrap;'>{type_html}</td>"
+                rows.append(f"<tr>{date_cell}{type_cell}</tr>")
+
+            text = "<table style='border-collapse:collapse;'>" + ''.join(rows) + "</table>"
 
         # Recreate device if it was deleted
         if self.UNIT_TEXT not in Devices:
