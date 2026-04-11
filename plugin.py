@@ -122,6 +122,18 @@ TYPE_ALIASES = [
     ('kerstbomen', 'Kerstbomen'),
 ]
 
+# Maps canonical display names (from TYPE_ALIASES) to emoji icons shown when
+# no image icon_url is available for an entry.
+WASTE_EMOJI: Dict[str, str] = {
+    'GFT':        '🟢',
+    'Papier':     '📦',
+    'Restafval':  '🗑️',
+    'PMD':        '🔵',
+    'Glas':       '🫙',
+    'Textiel':    '👕',
+    'Kerstbomen': '🎄',
+}
+
 
 def apply_type_alias(gtype: str) -> str:
     """Map a verbose waste type name to a short display name using TYPE_ALIASES."""
@@ -1510,7 +1522,9 @@ class BasePlugin:
                     )
                     lines.append(f'{icon_html}{date_str}: {display_type}')
                 else:
-                    lines.append(f'{date_str}: {display_type}')
+                    emoji = WASTE_EMOJI.get(display_type, '')
+                    prefix = f'{emoji} ' if emoji else ''
+                    lines.append(f'{prefix}{date_str}: {display_type}')
             text = '<br>'.join(lines) if has_icons else '\n'.join(lines)
 
         # Recreate device if it was deleted
