@@ -4,19 +4,46 @@
 -- "Vandaag <soort>" of "Morgen <soort>" in het meldingsdevice (NOTIFY_DEVICE_IDX).
 --
 -- Regels:
---   - "Morgen <soort>"  →  alleen zichtbaar vanaf 16:00 de dag vóór de ophaaldag.
---   - "Vandaag <soort>" →  zichtbaar van middernacht t/m 13:59 op de ophaaldag.
+--   - "Morgen <soort>"  →  alleen zichtbaar vanaf MORGEN_VANAF de dag vóór de ophaaldag.
+--   - "Vandaag <soort>" →  zichtbaar van middernacht t/m (VANDAAG_TOT - 1 minuut) op de ophaaldag.
 --   - In alle andere situaties wordt het device leeggemaakt.
 --
 -- Installatie:
 --   1. Stel GARBAGE_DEVICE_IDX in op de idx van uw GarbageCalendar text-device.
 --   2. Maak in Domoticz een Text-device aan met idx 2222 (of pas NOTIFY_DEVICE_IDX aan).
 --   3. Kopieer dit bestand naar <domoticz>/scripts/dzVents/scripts/
+--   4. Pas de tijden aan in config.txt (staat naast dit bestand).
 --
 -- Let op: het datumformaat van het GarbageCalendar-device moet 'wd dd mmm' zijn (de standaard).
 
 local GARBAGE_DEVICE_IDX = 123   -- *** Pas aan naar de idx van uw GarbageCalendar device ***
 local NOTIFY_DEVICE_IDX  = 2222
+
+-- ── Lees tijden uit config.txt ────────────────────────────────────────────────
+-- Standaardwaarden (gebruikt als config.txt ontbreekt of onleesbaar is)
+local vandaagTotMinutes  = 14 * 60   -- 14:00
+local morgenVanafMinutes = 16 * 60   -- 16:00
+
+local function parseHHMM(s)
+    if not s then return nil end
+    local h, m = s:match('^(%d+):(%d+)$')
+    if h and m then return tonumber(h) * 60 + tonumber(m) end
+    return nil
+end
+
+local configPath = debug.getinfo(1, 'S').source:match('@?(.+/)[^/]+$') .. 'config.txt'
+local cfgFile = io.open(configPath, 'r')
+if cfgFile then
+    for line in cfgFile:lines() do
+        local key, val = line:match('^%s*([%w_]+)%s*=%s*([^%s#]+)')
+        if key == 'VANDAAG_TOT' then
+            vandaagTotMinutes = parseHHMM(val) or vandaagTotMinutes
+        elseif key == 'MORGEN_VANAF' then
+            morgenVanafMinutes = parseHHMM(val) or morgenVanafMinutes
+        end
+    end
+    cfgFile:close()
+end
 
 local DUTCH_MONTHS = {
     jan=1, feb=2, mrt=3, apr=4, mei=5, jun=6,
@@ -28,8 +55,8 @@ return {
         devices = { GARBAGE_DEVICE_IDX },
         timer = {
             'at 00:01',  -- net na middernacht: zet "Vandaag" als ophaal vandaag is
-            'at 14:00',  -- wis "Vandaag"-melding op de ophaaldag
-            'at 16:00',  -- zet "Morgen"-melding als ophaal morgen is
+            'at 14:00',  -- wis "Vandaag"-melding (zie VANDAAG_TOT in config.txt)
+            'at 16:00',  -- zet "Morgen"-melding (zie MORGEN_VANAF in config.txt)
         },
         system = { 'start' },  -- ook uitvoeren bij (her)start van Domoticz
     },
@@ -104,13 +131,13 @@ return {
         local message = ''
 
         if pickupEpoch == todayEpoch then
-            -- Ophaal vandaag: toon "<icon> Vandaag <soort>" tot 14:00
-            if currentMinutes < 14 * 60 then
+            -- Ophaal vandaag: toon "<icon> Vandaag <soort>" tot VANDAAG_TOT
+            if currentMinutes < vandaagTotMinutes then
                 message = iconTag .. 'Vandaag ' .. gtype
             end
         elseif pickupEpoch == tomorrowEpoch then
-            -- Ophaal morgen: toon "<icon> Morgen <soort>" vanaf 16:00
-            if currentMinutes >= 16 * 60 then
+            -- Ophaal morgen: toon "<icon> Morgen <soort>" vanaf MORGEN_VANAF
+            if currentMinutes >= morgenVanafMinutes then
                 message = iconTag .. 'Morgen ' .. gtype
             end
         end

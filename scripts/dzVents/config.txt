@@ -1,0 +1,8 @@
+-- GarbageCalendar notificatie configuratie
+-- Pas de tijden hieronder aan naar wens (formaat HH:MM, 24-uurs notatie).
+
+-- Tot hoe laat "Vandaag <soort>" getoond wordt op de ophaaldag
+VANDAAG_TOT=14:00
+
+-- Vanaf hoe laat "Morgen <soort>" getoond wordt de dag vóór de ophaaldag
+MORGEN_VANAF=16:00
