@@ -125,6 +125,15 @@ def _read_config() -> Dict[str, str]:
     return cfg
 
 
+def _parse_hhmm_to_min(val: str, default: int) -> int:
+    """Vertaal 'HH:MM' string naar minuten na middernacht; retourneert *default* bij fouten."""
+    try:
+        h_s, m_s = val.strip().split(':')
+        return int(h_s) * 60 + int(m_s)
+    except (ValueError, AttributeError):
+        return default
+
+
 # --------------------------------------------------------------------------------------------
 # Dutch date/time helpers
 # --------------------------------------------------------------------------------------------
@@ -1357,8 +1366,8 @@ class BasePlugin:
         self._show_events = 3
         self._update_hour = 2
         self._update_min = 30
-        self._vandaag_tot_min = 16 * 60   # tot wanneer "Vandaag" getoond wordt (minuten)
-        self._morgen_vanaf_min = 16 * 60  # vanaf wanneer "Morgen" getoond wordt (minuten)
+        self._vandaag_tot_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['VandaagTot'], 16 * 60)
+        self._morgen_vanaf_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['MorgenVanaf'], 16 * 60)
         self._last_fetch_date: Optional[datetime.date] = None
         self._cached_results: List[Dict] = []
         self._fetching = False
@@ -1383,20 +1392,9 @@ class BasePlugin:
             self._show_events = 3
 
         update_time = cfg.get('UpdateTime', '02:30').strip()
-        try:
-            h, m = update_time.split(':')
-            self._update_hour = int(h)
-            self._update_min = int(m)
-        except (ValueError, AttributeError):
-            self._update_hour = 2
-            self._update_min = 30
-
-        def _parse_hhmm_to_min(val: str, default: int) -> int:
-            try:
-                h_s, m_s = val.strip().split(':')
-                return int(h_s) * 60 + int(m_s)
-            except (ValueError, AttributeError):
-                return default
+        update_min = _parse_hhmm_to_min(update_time, 2 * 60 + 30)
+        self._update_hour = update_min // 60
+        self._update_min = update_min % 60
 
         self._vandaag_tot_min = _parse_hhmm_to_min(cfg.get('VandaagTot', '16:00'), 16 * 60)
         self._morgen_vanaf_min = _parse_hhmm_to_min(cfg.get('MorgenVanaf', '16:00'), 16 * 60)
