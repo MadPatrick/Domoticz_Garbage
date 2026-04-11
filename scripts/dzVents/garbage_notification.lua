@@ -55,7 +55,7 @@ return {
         -- Trim witruimte
         firstLine = firstLine:match('^%s*(.-)%s*$')
 
-        -- ── Parsseer "wd DD mmm: SOORT"  bijv. "ma 12 apr: GFT" ──────────────
+        -- ── Parseer "wd DD mmm: SOORT"  bijv. "ma 12 apr: GFT" ───────────────
         local dateStr, gtype = firstLine:match('^(.-)%s*:%s*(.-)%s*$')
         if not dateStr or not gtype or gtype == '' then
             domoticz.devices(NOTIFY_DEVICE_IDX).updateText('')
