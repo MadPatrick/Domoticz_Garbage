@@ -92,9 +92,9 @@ import urllib.error
 import threading
 from typing import List, Dict, Optional
 
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 # Dutch date/time helpers
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 
 DUTCH_WEEKDAYS_SHORT = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo']
 DUTCH_WEEKDAYS_LONG = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag', 'zondag']
@@ -102,11 +102,9 @@ DUTCH_MONTHS_SHORT = ['', 'jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug'
 DUTCH_MONTHS_LONG = ['', 'januari', 'februari', 'maart', 'april', 'mei', 'juni',
                      'juli', 'augustus', 'september', 'oktober', 'november', 'december']
 
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 # Waste type aliases
-# Maps substrings of verbose API type names (lowercase) to short display names.
-# First match wins; edit this list to customise the labels shown in Domoticz.
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 
 TYPE_ALIASES = [
     ('groente',    'GFT'),
@@ -122,29 +120,28 @@ TYPE_ALIASES = [
     ('kerstbomen', 'Kerstbomen'),
 ]
 
-# Maps canonical display names (from TYPE_ALIASES) to HTML icon strings.
+# Maps canonical display names to HTML entity icon + coloured label.
 # Uses HTML entities + inline style so Domoticz Text devices render them correctly,
 # just like other Domoticz plugins that use styled HTML in sValue.
 WASTE_ICONS: Dict[str, str] = {
-    'GFT':        "&#127807; <span style='color:#4caf50;'>GFT</span>",
-    'Papier':     "&#128220; <span style='color:#2196f3;'>Papier</span>",
-    'Restafval':  "&#128465; <span style='color:#607d8b;'>Restafval</span>",
-    'PMD':        "&#9851; <span style='color:#ff9800;'>PMD</span>",
-    'Glas':       "&#129753; <span style='color:#00bcd4;'>Glas</span>",
-    'Textiel':    "&#128084; <span style='color:#9c27b0;'>Textiel</span>",
-    'Kerstbomen': "&#127876; <span style='color:#388e3c;'>Kerstbomen</span>",
+    'GFT':        "<span style='color:#4caf50;'>GFT</span>",
+    'Papier':     "<span style='color:#2196f3;'>Papier</span>",
+    'Restafval':  "<span style='color:#607d8b;'>Restafval</span>",
+    'PMD':        "<span style='color:#ff9800;'>PMD</span>",
+    'Glas':       "<span style='color:#00bcd4;'>Glas</span>",
+    'Textiel':    "<span style='color:#9c27b0;'>Textiel</span>",
+    'Kerstbomen': "<span style='color:#388e3c;'>Kerst</span>",
 }
 
 
 def apply_type_alias(gtype: str) -> str:
-    """Map a verbose waste type name to a short display name using TYPE_ALIASES."""
     lower = gtype.lower()
     for key, alias in TYPE_ALIASES:
         if key in lower:
             return alias
     return gtype
 
-# Month name -> number (Dutch + English aliases)
+
 INPUT_MONTHS: Dict[str, int] = {
     'jan': 1, 'feb': 2, 'mrt': 3, 'maa': 3, 'mar': 3,
     'apr': 4, 'mei': 5, 'may': 5, 'jun': 6, 'jul': 7,
@@ -153,7 +150,6 @@ INPUT_MONTHS: Dict[str, int] = {
 
 
 def format_date(d: datetime.date, fmt: str) -> str:
-    """Format a date using the Lua-compatible textformat string."""
     result = fmt
     result = result.replace('wdd', DUTCH_WEEKDAYS_LONG[d.weekday()])
     result = result.replace('wd', DUTCH_WEEKDAYS_SHORT[d.weekday()])
@@ -167,7 +163,6 @@ def format_date(d: datetime.date, fmt: str) -> str:
 
 
 def parse_iso_date(s: str) -> Optional[datetime.date]:
-    """Parse ISO date strings: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS..."""
     if not s:
         return None
     m = re.match(r'(\d{4})-(\d{2})-(\d{2})', s)
@@ -180,7 +175,6 @@ def parse_iso_date(s: str) -> Optional[datetime.date]:
 
 
 def parse_compact_date(s: str) -> Optional[datetime.date]:
-    """Parse compact date string YYYYMMDD."""
     m = re.match(r'^(\d{4})(\d{2})(\d{2})$', s)
     if m:
         try:
@@ -191,16 +185,13 @@ def parse_compact_date(s: str) -> Optional[datetime.date]:
 
 
 def parse_dutch_date(s: str) -> Optional[datetime.date]:
-    """Parse Dutch-style dates: 'dag DD mmm' or 'DD mmm YYYY'."""
     parts = s.strip().split()
     today = datetime.date.today()
     try:
         if len(parts) == 3:
             if parts[2].isdigit() and len(parts[2]) == 4:
-                # DD mmm YYYY
                 dd, mm_str, yyyy = int(parts[0]), parts[1].lower(), int(parts[2])
             else:
-                # wd DD mmm (weekday prefix, no year)
                 dd, mm_str, yyyy = int(parts[1]), parts[2].lower(), today.year
             mm = INPUT_MONTHS.get(mm_str)
             if mm:
@@ -221,15 +212,14 @@ def parse_dutch_date(s: str) -> Optional[datetime.date]:
     return None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 # HTTP helpers
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 
 DEFAULT_HEADERS = {'User-Agent': 'GarbageCalendar-DomoticzPlugin/1.0'}
 
 
 def http_get(url: str, headers: Optional[Dict] = None, timeout: int = 30) -> str:
-    """Perform an HTTP GET request. Returns response body or empty string on error."""
     merged = {**DEFAULT_HEADERS, **(headers or {})}
     req = urllib.request.Request(url, headers=merged)
     try:
@@ -250,7 +240,6 @@ def http_get(url: str, headers: Optional[Dict] = None, timeout: int = 30) -> str
 
 
 def http_post(url: str, data: bytes, headers: Optional[Dict] = None, timeout: int = 30) -> str:
-    """Perform an HTTP POST request. Returns response body or empty string on error."""
     merged = {**DEFAULT_HEADERS, **(headers or {})}
     req = urllib.request.Request(url, data=data, headers=merged, method='POST')
     try:
@@ -270,29 +259,14 @@ def http_post(url: str, data: bytes, headers: Optional[Dict] = None, timeout: in
         return ''
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 # Base module class
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 
 class GarbageModule:
-    """Abstract base class for all garbage calendar modules."""
     name = 'base'
 
     def fetch(self, zipcode: str, housenr: str, housenrsuf: str, extra: str) -> List[Dict]:
-        """
-        Fetch garbage calendar data.
-
-        Args:
-            zipcode:    Postal code (e.g. '1234AB')
-            housenr:    House number (e.g. '10')
-            housenrsuf: House number suffix (e.g. 'a', or '')
-            extra:      Module-specific extra parameter (hostname / street /
-                        BPName / companycode / CSV path / etc.)
-
-        Returns:
-            List of dicts sorted by date ascending:
-            [{'type': str, 'date': datetime.date, 'wdesc': str}, ...]
-        """
         raise NotImplementedError
 
     def _log(self, msg: str) -> None:
@@ -312,9 +286,9 @@ class GarbageModule:
         return {'type': gtype, 'date': d, 'wdesc': wdesc, 'icon_url': icon_url}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 # Module 1: m_mijnafvalwijzer  (HTML scraping)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 
 class MijnAfvalwijzerModule(GarbageModule):
     name = 'm_mijnafvalwijzer'
@@ -328,10 +302,8 @@ class MijnAfvalwijzerModule(GarbageModule):
             self._error('Empty response')
             return []
 
-        # Strip embedded base64 images to speed up parsing
         html = re.sub(r'<img\s+src="data:image[^"]*">', '', html)
 
-        # Find start of the calendar section
         start = html.find('href="#waste')
         if start == -1:
             start = html.find('ITEMS layout -->')
@@ -364,14 +336,12 @@ class MijnAfvalwijzerModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 # Module 2: m_mijnafvalwijzer_api  (JSON API)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 
 class MijnAfvalwijzerApiModule(GarbageModule):
     name = 'm_mijnafvalwijzer_api'
-    # This API key is the public shared key used by the official mijnafvalwijzer app.
-    # It is the same key as in the original Lua module and is intentionally public.
     _API_KEY = '5ef443e778f41c4f75c69459eea6e6ae0c2d92de729aa0fc61653815fbd6a8ca'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
@@ -414,9 +384,9 @@ class MijnAfvalwijzerApiModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 3: m_ximmio  (Ximmio waste API)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 3: m_ximmio
+# --------------------------------------------------------------------------------------------
 
 class XimmioModule(GarbageModule):
     name = 'm_ximmio'
@@ -432,7 +402,6 @@ class XimmioModule(GarbageModule):
         webhost = None
         unique_id = ''
 
-        # Try both hosts to find the UniqueId for this address
         for host in self._HOSTS:
             post_data = urllib.parse.urlencode({
                 'companyCode': companycode,
@@ -494,9 +463,9 @@ class XimmioModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 4: m_rova_api  (Rova waste API)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 4: m_rova_api
+# --------------------------------------------------------------------------------------------
 
 class RovaApiModule(GarbageModule):
     name = 'm_rova_api'
@@ -534,9 +503,9 @@ class RovaApiModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 5: m_rd4_api  (RD4 waste API)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 5: m_rd4_api
+# --------------------------------------------------------------------------------------------
 
 class Rd4ApiModule(GarbageModule):
     name = 'm_rd4_api'
@@ -574,9 +543,9 @@ class Rd4ApiModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 6: m_opzet  (Opzet iCal)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 6: m_opzet  (iCal)
+# --------------------------------------------------------------------------------------------
 
 class OpzetModule(GarbageModule):
     name = 'm_opzet'
@@ -615,7 +584,6 @@ class OpzetModule(GarbageModule):
             return []
         self._log(f'bagId: {bag_id}')
 
-        # Fetch iCal
         url = f'https://{hostname}/ical/{bag_id}'
         self._log(f'GET {url}')
         ical = http_get(url)
@@ -637,9 +605,9 @@ class OpzetModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 7: m_opzet_api  (Opzet REST API)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 7: m_opzet_api  (REST API)
+# --------------------------------------------------------------------------------------------
 
 class OpzetApiModule(OpzetModule):
     name = 'm_opzet_api'
@@ -657,7 +625,6 @@ class OpzetApiModule(OpzetModule):
             return []
         self._log(f'bagId: {bag_id}')
 
-        # Fetch type mapping (afvalstromen)
         raw_types = http_get(f'https://{hostname}/rest/adressen/{bag_id}/afvalstromen')
         type_map: Dict[int, str] = {}
         icon_map: Dict[int, str] = {}
@@ -706,14 +673,12 @@ class OpzetApiModule(OpzetModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 8: m_recycleapp-be  (Belgian RecycleApp)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 8: m_recycleapp-be
+# --------------------------------------------------------------------------------------------
 
 class RecycleAppBeModule(GarbageModule):
     name = 'm_recycleapp-be'
-    # These credentials (secret, consumer) are the public shared tokens used by the
-    # official recycleapp.be mobile app and are the same as in the original Lua module.
     _BASE_URL = 'https://api.fostplus.be/recycle-public/app/v1'
     _SECRET = (
         'Op2tDi2pBmh1wzeC5TaN2U3knZan7ATcfOQgxh4vqC0mDKmnPP2qzoQusmInpglfIkxx8SZrasBqi5zgMSvy'
@@ -732,7 +697,6 @@ class RecycleAppBeModule(GarbageModule):
         today = datetime.date.today()
         base_headers = {'x-secret': self._SECRET, 'x-consumer': 'recycleapp.be'}
 
-        # Step 1: access token
         raw = http_get(f'{self._BASE_URL}/access-token', headers=base_headers)
         if not raw:
             self._error('Could not get access token')
@@ -747,7 +711,6 @@ class RecycleAppBeModule(GarbageModule):
 
         auth_headers = {**base_headers, 'Authorization': access_token}
 
-        # Step 2: zipcode ID
         raw = http_get(f'{self._BASE_URL}/zipcodes?q={urllib.parse.quote(zipcode)}',
                        headers=auth_headers)
         try:
@@ -756,7 +719,6 @@ class RecycleAppBeModule(GarbageModule):
             self._error('Could not get postcode_id')
             return []
 
-        # Step 3: street ID
         raw = http_get(
             f'{self._BASE_URL}/streets?q={urllib.parse.quote(street)}&zipcodes={postcode_id}',
             headers=auth_headers,
@@ -767,7 +729,6 @@ class RecycleAppBeModule(GarbageModule):
             self._error('Could not get street_id')
             return []
 
-        # Step 4: collection calendar
         start = today.strftime('%Y-%m-%d')
         end = (today + datetime.timedelta(days=180)).strftime('%Y-%m-%d')
         url = (
@@ -795,9 +756,9 @@ class RecycleAppBeModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 9: m_omrin  (requires 'cryptography' package)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 9: m_omrin
+# --------------------------------------------------------------------------------------------
 
 class OmrinModule(GarbageModule):
     name = 'm_omrin'
@@ -820,7 +781,6 @@ class OmrinModule(GarbageModule):
         app_id = str(uuid.uuid4())
         thnr = housenr + (housenrsuf or '')
 
-        # Step 1: get RSA public key token
         token_body = json.dumps({
             'AppId': app_id, 'AppVersion': '', 'OsVersion': '', 'Platform': 'HomeAssistant',
         })
@@ -850,7 +810,6 @@ class OmrinModule(GarbageModule):
             self._error(f'Failed to load public key: {e}')
             return []
 
-        # Step 2: encrypt address data and fetch calendar
         request_body = json.dumps({
             'a': False, 'Email': None, 'Password': None,
             'PostalCode': zipcode, 'HouseNumber': thnr,
@@ -890,14 +849,12 @@ class OmrinModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 10: m_burgerportaal  (Firebase auth + Google Cloud Functions)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 10: m_burgerportaal
+# --------------------------------------------------------------------------------------------
 
 class BurgerportaalModule(GarbageModule):
     name = 'm_burgerportaal'
-    # This Firebase API key is the public client key for the burgerportaal app.
-    # Firebase client API keys are intentionally public (access is restricted by Firebase rules).
     _FIREBASE_KEY = 'AIzaSyA6NkRqJypTfP-cjWzrZNFJzPUbBaGjOdk'
     _BP_CODES: Dict[str, str] = {
         'assen': '138204213565303512',
@@ -907,8 +864,6 @@ class BurgerportaalModule(GarbageModule):
     _GCF_BASE = 'https://europe-west3-burgerportaal-production.cloudfunctions.net/exposed'
 
     def __init__(self, token_file: Optional[str] = None):
-        # Store the refresh token next to the plugin file so it persists across restarts
-        # and is only readable by the Domoticz process owner.
         _plugin_dir = os.path.dirname(os.path.abspath(__file__))
         self._token_file = token_file or os.path.join(_plugin_dir, 'gc_burgerportaal_token.txt')
 
@@ -920,14 +875,13 @@ class BurgerportaalModule(GarbageModule):
         org_id = self._BP_CODES[bp_name]
         return self._fetch_for_org(zipcode, housenr, housenrsuf, org_id)
 
-    def _fetch_for_org(self, zipcode: str, housenr: str, housenrsuf: str, org_id: str) -> List[Dict]:
+    def _fetch_for_org(self, zipcode, housenr, housenrsuf, org_id):
         today = datetime.date.today()
         thnr = housenr + (housenrsuf or '')
         id_token = self._get_id_token()
         if not id_token:
             return []
 
-        # Step 1: address ID
         url = f'{self._GCF_BASE}/organisations/{org_id}/address?zipcode={zipcode.upper()}&housenumber={thnr}'
         self._log(f'GET {url}')
         raw = http_get(url, headers={'authorization': id_token})
@@ -942,7 +896,6 @@ class BurgerportaalModule(GarbageModule):
             self._error('Empty addressId')
             return []
 
-        # Step 2: calendar
         url2 = f'{self._GCF_BASE}/organisations/{org_id}/address/{address_id}/calendar'
         self._log(f'GET {url2}')
         raw2 = http_get(url2, headers={'authorization': id_token})
@@ -964,29 +917,27 @@ class BurgerportaalModule(GarbageModule):
         results.sort(key=lambda x: x['date'])
         return results
 
-    # ── Firebase token management ─────────────────────────────────────────
-
-    def _get_id_token(self) -> str:
+    def _get_id_token(self):
         refresh_token = self._load_refresh_token()
         if len(refresh_token) >= 200:
             return self._refresh_id_token(refresh_token)
         return self._signup_and_get_token()
 
-    def _load_refresh_token(self) -> str:
+    def _load_refresh_token(self):
         try:
             with open(self._token_file, 'r') as f:
                 return f.read().strip()
         except Exception:
             return ''
 
-    def _save_refresh_token(self, token: str) -> None:
+    def _save_refresh_token(self, token):
         try:
             with open(self._token_file, 'w') as f:
                 f.write(token)
         except Exception:
             pass
 
-    def _signup_and_get_token(self) -> str:
+    def _signup_and_get_token(self):
         url = (f'https://www.googleapis.com/identitytoolkit/v3/relyingparty/'
                f'signupNewUser?key={self._FIREBASE_KEY}')
         raw = http_post(url, b'', headers={'Content-Length': '0'})
@@ -1001,7 +952,7 @@ class BurgerportaalModule(GarbageModule):
             self._error('Could not get Firebase signup token')
             return ''
 
-    def _refresh_id_token(self, refresh_token: str) -> str:
+    def _refresh_id_token(self, refresh_token):
         url = f'https://securetoken.googleapis.com/v1/token?key={self._FIREBASE_KEY}'
         post_data = f'grant_type=refresh_token&refresh_token={urllib.parse.quote(refresh_token)}'.encode()
         raw = http_post(url, post_data,
@@ -1017,9 +968,9 @@ class BurgerportaalModule(GarbageModule):
             return self._signup_and_get_token()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 11: m_rmn  (RMN - fixed organisation ID)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 11: m_rmn
+# --------------------------------------------------------------------------------------------
 
 class RmnModule(BurgerportaalModule):
     name = 'm_rmn'
@@ -1033,9 +984,9 @@ class RmnModule(BurgerportaalModule):
         return self._fetch_for_org(zipcode, housenr, housenrsuf, self._RMN_ORG_ID)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 12: m_deafvalapp  (De Afval App)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 12: m_deafvalapp
+# --------------------------------------------------------------------------------------------
 
 class DeAfvalAppModule(GarbageModule):
     name = 'm_deafvalapp'
@@ -1065,7 +1016,6 @@ class DeAfvalAppModule(GarbageModule):
                 dstr = dstr.strip()
                 if not dstr:
                     continue
-                # Format: DD-MM-YYYY
                 m = re.match(r'(\d+)-(\d+)-(\d{4})', dstr)
                 if m:
                     try:
@@ -1079,9 +1029,9 @@ class DeAfvalAppModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 13: m_zuidlimburg  (ZuidLimburg HTML scraping)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 13: m_zuidlimburg
+# --------------------------------------------------------------------------------------------
 
 class ZuidLimburgModule(GarbageModule):
     name = 'm_zuidlimburg'
@@ -1116,7 +1066,7 @@ class ZuidLimburgModule(GarbageModule):
         return results
 
     @staticmethod
-    def _parse_date(s: str, today: datetime.date) -> Optional[datetime.date]:
+    def _parse_date(s, today):
         parts = s.strip().split()
         try:
             if len(parts) >= 2:
@@ -1130,20 +1080,18 @@ class ZuidLimburgModule(GarbageModule):
         return None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 14: m_montferland  (Montferland REST API)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 14: m_montferland
+# --------------------------------------------------------------------------------------------
 
 class MontferlandModule(GarbageModule):
     name = 'm_montferland'
     _BASE = 'http://afvalwijzer.afvaloverzicht.nl'
-    # This is the publicly documented fixed credential for the Montferland afvalwijzer API.
     _PWD = urllib.parse.quote('gsd$2014')
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         today = datetime.date.today()
 
-        # Step 1: login and get AdresID/AdministratieID
         url = (
             f'{self._BASE}/Login.ashx?Username=GSD&Password={self._PWD}'
             f'&Postcode={zipcode}&Huisnummer={housenr}&Toevoeging={housenrsuf or ""}'
@@ -1164,7 +1112,6 @@ class MontferlandModule(GarbageModule):
         if not adres_id or not admin_id:
             self._error('No AdresID or AdministratieID in response')
             return []
-        self._log(f'AdresID: {adres_id}, AdministratieID: {admin_id}')
 
         results = []
         for year in [today.year, today.year + 1]:
@@ -1196,9 +1143,9 @@ class MontferlandModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 15: m_csv_file  (Local CSV file)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 15: m_csv_file
+# --------------------------------------------------------------------------------------------
 
 class CsvFileModule(GarbageModule):
     name = 'm_csv_file'
@@ -1229,7 +1176,6 @@ class CsvFileModule(GarbageModule):
             gtype = parts[1].strip()
             if not gtype or dstr.lower() == 'garbagedate':
                 continue
-            # Format: DD-MM-YYYY
             m = re.match(r'(\d+)-(\d+)-(\d{4})', dstr)
             if m:
                 try:
@@ -1243,9 +1189,9 @@ class CsvFileModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 16: m_afvalinfo  (trashapi.azurewebsites.net, NL)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 16: m_afvalinfo
+# --------------------------------------------------------------------------------------------
 
 class AfvalInfoModule(GarbageModule):
     name = 'm_afvalinfo'
@@ -1296,15 +1242,15 @@ class AfvalInfoModule(GarbageModule):
         return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module 17: m_reinis  (reinis.nl REST API)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module 17: m_reinis
+# --------------------------------------------------------------------------------------------
 
 class ReinisModule(OpzetApiModule):
     name = 'm_reinis'
     _HOSTNAME = 'reinis.nl'
 
-    def _get_bag_id(self, hostname: str, zipcode: str, housenr: str, housenrsuf: str) -> str:
+    def _get_bag_id(self, hostname, zipcode, housenr, housenrsuf):
         url = f'https://{hostname}/adressen/{zipcode}:{housenr}'
         self._log(f'GET {url}')
         raw = http_get(url)
@@ -1329,9 +1275,9 @@ class ReinisModule(OpzetApiModule):
         return super().fetch(zipcode, housenr, housenrsuf, self._HOSTNAME)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Module registry  (key = value from plugin dropdown)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
+# Module registry
+# --------------------------------------------------------------------------------------------
 
 MODULES: Dict[str, GarbageModule] = {
     '1':  MijnAfvalwijzerModule(),
@@ -1353,9 +1299,9 @@ MODULES: Dict[str, GarbageModule] = {
     '17': ReinisModule(),
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 # Domoticz Plugin class
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------
 
 class BasePlugin:
     UNIT_TEXT = 1
@@ -1377,12 +1323,9 @@ class BasePlugin:
         self._lock = threading.Lock()
         self.imageID = -1
 
-    # ── Domoticz callbacks ────────────────────────────────────────────────
-
     def onStart(self):
         Domoticz.Heartbeat(self.HEARTBEAT_SECS)
 
-        # Read parameters
         module_key = Parameters.get('Mode1', '2').strip()
         self._zipcode = Parameters.get('Mode2', '').strip()
         self._housenr = Parameters.get('Mode3', '').strip()
@@ -1404,7 +1347,6 @@ class BasePlugin:
             self._update_hour = 2
             self._update_min = 30
 
-        # --- Icon Packs ---
         try:
             if "Garbage" not in Images:
                 Domoticz.Image("Garbage.zip").Create()
@@ -1427,12 +1369,10 @@ class BasePlugin:
             f'events: {self._show_events}'
         )
 
-        # Create text device if it does not exist
         if self.UNIT_TEXT not in Devices:
             self._create_text_device()
             Domoticz.Log('Text device "GarbageCalendar" created')
 
-        # Trigger an initial data fetch immediately
         self._trigger_fetch()
 
     def onStop(self):
@@ -1445,12 +1385,10 @@ class BasePlugin:
         now = datetime.datetime.now()
         today = now.date()
 
-        # Determine if a fresh fetch is needed
         with self._lock:
             already_fetched_today = (self._last_fetch_date == today)
 
         if not already_fetched_today:
-            # Only start the daily refresh at (or after) the configured time
             past_update_time = (
                 now.hour > self._update_hour or
                 (now.hour == self._update_hour and now.minute >= self._update_min)
@@ -1460,16 +1398,12 @@ class BasePlugin:
         else:
             self._update_device()
 
-    # ── Internal helpers ──────────────────────────────────────────────────
-
     def _create_text_device(self):
-        """Create the GarbageCalendar text device, applying the icon if available."""
         image_kwarg = {'Image': self.imageID} if self.imageID >= 0 else {}
         Domoticz.Device(Name='GarbageCalendar', Unit=self.UNIT_TEXT,
                         TypeName='Text', Used=1, **image_kwarg).Create()
 
     def _trigger_fetch(self):
-        """Start a background thread to fetch data without blocking Domoticz."""
         with self._lock:
             if self._fetching:
                 return
@@ -1498,7 +1432,15 @@ class BasePlugin:
                 self._fetching = False
 
     def _update_device(self):
-        """Update the Domoticz text device with the next N upcoming events."""
+        """Update the Domoticz text device with the next N upcoming events.
+
+        Layout per regel:
+            📅  <datum vaste breedte>    <icon> <gekleurde naam>
+
+        De datum-kolom krijgt een vaste breedte via display:inline-block zodat
+        de icon+naam op elke regel op dezelfde horizontale positie begint.
+        Regels worden gescheiden door <br> — betrouwbaarder in Domoticz dan <table>.
+        """
         today = datetime.date.today()
 
         with self._lock:
@@ -1515,34 +1457,32 @@ class BasePlugin:
                 display_type = apply_type_alias(r['type'])
                 icon_url = r.get('icon_url', '')
 
+                # Datum in vaste breedte zodat de tweede kolom uitlijnt op elke regel
+                date_cell = (
+                    "&#128197;&nbsp;"
+                    "<span style='display:inline-block;min-width:95px;"
+                    "color:#969696;font-weight:bold;'>"
+                    f"{date_str}"
+                    "</span>"
+                )
+
                 if icon_url:
-                    # Module provided a real image URL (e.g. opzet_api): use an inline img tag
                     safe_url = _html.escape(icon_url, quote=True)
-                    type_html = (
+                    icon_cell = (
                         f'<img src="{safe_url}" '
-                        f'style="height:18px;vertical-align:middle;margin-right:4px;">'
+                        f'style="height:12px;vertical-align:middle;margin-right:4px;">'
                         f"{display_type}"
                     )
                 else:
-                    # Use HTML entity icon + coloured label from WASTE_ICONS
-                    type_html = WASTE_ICONS.get(
+                    icon_cell = WASTE_ICONS.get(
                         display_type,
                         f"<span style='color:#999;'>{display_type}</span>"
                     )
 
-                # Fixed-width date block so the type icon starts at the same
-                # horizontal position on every line regardless of date length.
-                date_span = (
-                    f"<span style='display:inline-block;min-width:76px;"
-                    f"white-space:nowrap;margin-right:4px;'>"
-                    f"&#128197; <b><span style='color:#969696;'>{date_str}</span></b>"
-                    f"</span>"
-                )
-                lines.append(f"{date_span}{type_html}")
+                lines.append(f"{date_cell}{icon_cell}")
 
             text = '<br>'.join(lines)
 
-        # Recreate device if it was deleted
         if self.UNIT_TEXT not in Devices:
             self._create_text_device()
 
@@ -1550,9 +1490,9 @@ class BasePlugin:
             Devices[self.UNIT_TEXT].Update(nValue=0, sValue=text)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Domoticz module-level callbacks (required by the plugin framework)
-# ─────────────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------------------------------------------------------------------------------------------
+# Domoticz module-level callbacks
+# --------------------------------------------------------------------------------------------------------------------------------------------------------
 
 _plugin = BasePlugin()
 
