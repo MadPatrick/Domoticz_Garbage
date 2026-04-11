@@ -1517,8 +1517,8 @@ class BasePlugin:
         """Update meldingsdevice op basis van ophaaldag en tijd.
 
         UNIT_NOTIFY (Melding):
-          - Ophaal vandaag, voor 14:00  -> "Vandaag <soort>"
-          - Ophaal morgen, vanaf 16:00  -> "Morgen <soort>"
+          - Ophaal vandaag, voor 14:00  -> "<span style='color:white;'>Vandaag</span> <soort>"
+          - Ophaal morgen, vanaf 16:00  -> "<span style='color:white;'>Morgen</span> <soort>"
           - Anders                      -> leeg
         """
         now = datetime.datetime.now()
@@ -1534,10 +1534,10 @@ class BasePlugin:
 
             if first['date'] == today:
                 if current_minutes < 14 * 60:
-                    notify_text = f"Vandaag {display_type}"
+                    notify_text = f"<span style='color:white;'>Vandaag</span> {display_type}"
             elif first['date'] == tomorrow:
                 if current_minutes >= 16 * 60:
-                    notify_text = f"Morgen {display_type}"
+                    notify_text = f"<span style='color:white;'>Morgen</span> {display_type}"
 
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
