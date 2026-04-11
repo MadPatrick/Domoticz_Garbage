@@ -71,7 +71,6 @@
         <param field="Mode3" label="Huisnummer" width="75px" required="false" default="" />
         <param field="Mode4" label="Huisnummer suffix" width="75px" required="false" default="" />
         <param field="Mode5" label="Extra: Hostname / Straat / BPName / Companycode / CSV-pad / Gemeente(afvalinfo)" width="300px" required="false" default="" />
-        <param field="Mode6" label="Datumformaat (wd/wdd/dd/mm/mmm/mmmm/yyyy)" width="150px" required="false" default="wd dd mmm" />
         <param field="Address" label="Domoticz adres" width="150px" required="true" default="127.0.0.1" />
         <param field="Port" label="Domoticz poort" width="75px" required="true" default="8080" />
         <param field="Username" label="Dagelijkse verversingstijd (HH:MM)" width="100px" required="false" default="02:30" />
@@ -1337,7 +1336,7 @@ class BasePlugin:
         self._housenr = Parameters.get('Mode3', '').strip()
         self._housenrsuf = Parameters.get('Mode4', '').strip()
         self._extra = Parameters.get('Mode5', '').strip()
-        self._date_fmt = Parameters.get('Mode6', 'wd dd mmm').strip() or 'wd dd mmm'
+        self._date_fmt = 'wd dd mmm'
 
         try:
             self._show_events = max(1, int(Parameters.get('Password', '3') or '3'))
