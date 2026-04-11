@@ -10,12 +10,12 @@ Supports 17 different waste-collection data sources used in the Netherlands and 
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
-  - [Parameters](#parameters)
-  - [Date format tokens](#date-format-tokens)
+  - [Plugin parameters](#plugin-parameters)
+  - [config.txt settings](#configtxt-settings)
   - [Module-specific notes](#module-specific-notes)
 - [Supported modules](#supported-modules)
 - [Waste types](#waste-types)
-- [dzVents notification script](#dzvents-notification-script)
+- [Notification device](#notification-device)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -37,9 +37,9 @@ Supports 17 different waste-collection data sources used in the Netherlands and 
    ```bash
    mkdir -p <domoticz>/plugins/GarbageCalendar
    ```
-2. Copy `plugin.py` into that directory:
+2. Copy `plugin.py` (and optionally `config.txt`) into that directory:
    ```bash
-   cp plugin.py <domoticz>/plugins/GarbageCalendar/
+   cp plugin.py config.txt <domoticz>/plugins/GarbageCalendar/
    ```
 3. Restart Domoticz:
    ```bash
@@ -48,13 +48,20 @@ Supports 17 different waste-collection data sources used in the Netherlands and 
 4. In the Domoticz web interface go to **Setup → Hardware**, click **Add**, and choose **GarbageCalendar** from the type list.
 5. Fill in the parameters (see [Configuration](#configuration)) and click **Add**.
 
-Domoticz will create a single **Text** device that shows the next upcoming pickup dates.
+Domoticz will create two **Text** devices:
+
+| Device name | Description |
+|---|---|
+| **Garbage Calendar** | Shows the next upcoming pickup dates |
+| **Garbage Container** | Shows a "Vandaag / Morgen" reminder (see [Notification device](#notification-device)) |
 
 ---
 
 ## Configuration
 
-### Parameters
+### Plugin parameters
+
+These parameters are set in the Domoticz hardware setup UI:
 
 | Label | Description | Default |
 |---|---|---|
@@ -63,34 +70,20 @@ Domoticz will create a single **Text** device that shows the next upcoming picku
 | **Huisnummer** | House number | *(empty)* |
 | **Huisnummer suffix** | House number addition (e.g. `A`, `bis`) | *(empty)* |
 | **Extra** | Module-specific extra value (see [Module-specific notes](#module-specific-notes)) | *(empty)* |
-| **Datumformaat** | Date format string for displayed dates (see [Date format tokens](#date-format-tokens)) | `wd dd mmm` |
-| **Domoticz adres** | IP address of your Domoticz instance | `127.0.0.1` |
-| **Domoticz poort** | Port of your Domoticz instance | `8080` |
-| **Dagelijkse verversingstijd** | Time of day to refresh the schedule (HH:MM) | `02:30` |
-| **Aantal te tonen events** | Number of upcoming pickups to display | `3` |
 
-### Date format tokens
+### config.txt settings
 
-Use these tokens in the **Datumformaat** field to compose your preferred date string:
+Advanced settings are configured by editing `config.txt` in the plugin directory.  
+The plugin re-reads this file on every restart (no Domoticz restart required — just restart the plugin via **Setup → Hardware**).
 
-| Token | Output example | Description |
+| Key | Description | Default |
 |---|---|---|
-| `wd` | `ma` | Dutch weekday abbreviation (2 letters) |
-| `wdd` | `maandag` | Dutch weekday full name |
-| `dd` | `07` | Day number, zero-padded |
-| `mm` | `04` | Month number, zero-padded |
-| `mmm` | `apr` | Dutch month abbreviation |
-| `mmmm` | `april` | Dutch month full name |
-| `yyyy` | `2025` | Four-digit year |
-| `yy` | `25` | Two-digit year |
+| `UpdateTime` | Time of day to refresh the schedule (HH:MM) | `02:30` |
+| `ShowEvents` | Number of upcoming pickups to display | `3` |
+| `VandaagTot` | Until what time the "Vandaag" notification is shown (HH:MM) | `16:00` |
+| `MorgenVanaf` | From what time the "Morgen" notification is shown (HH:MM) | `16:00` |
 
-**Examples:**
-
-| Format string | Result |
-|---|---|
-| `wd dd mmm` | `ma 07 apr` |
-| `wdd dd mmmm yyyy` | `maandag 07 april 2025` |
-| `dd-mm-yyyy` | `07-04-2025` |
+Pickup dates are always displayed in the format **`wd dd mmm`** (e.g. `ma 07 apr`).
 
 ### Module-specific notes
 
@@ -151,31 +144,18 @@ Unknown waste types are displayed as-is.
 
 ---
 
-## dzVents notification script
+## Notification device
 
-The repository includes an optional **dzVents** script (`scripts/dzVents/garbage_notification.lua`) that reads the GarbageCalendar Text device and shows a short notification in a second Text device.
+The plugin automatically creates a second Text device called **"Garbage Container"** that shows a short reminder:
 
-### What it does
+| Situation | Text shown |
+|---|---|
+| Collection day, before `VandaagTot` | `Vandaag <soort>` |
+| Day before collection, from `MorgenVanaf` | `Morgen <soort>` |
+| Outside these windows | *(empty)* |
 
-- **"Vandaag \<type\>"** – shown from midnight until 14:00 on the collection day.  
-- **"Morgen \<type\>"** – shown from 16:00 the day before collection.  
-- Outside these windows the notification device is cleared automatically.
-
-### Setup
-
-1. Open `garbage_notification.lua` and set the two constants at the top:
-   ```lua
-   local GARBAGE_DEVICE_IDX = 123   -- idx of your GarbageCalendar Text device
-   local NOTIFY_DEVICE_IDX  = 2222  -- idx of the notification Text device
-   ```
-2. In Domoticz, create a new **Text** device and note its `idx` — use that for `NOTIFY_DEVICE_IDX`.
-3. Copy the script to your Domoticz scripts folder:
-   ```bash
-   cp scripts/dzVents/garbage_notification.lua <domoticz>/scripts/dzVents/scripts/
-   ```
-4. Domoticz will pick up the script automatically (no restart needed).
-
-> **Note:** The GarbageCalendar device date format must use the default `wd dd mmm` format for the script to parse dates correctly.
+The reminder times can be adjusted in `config.txt` (see [config.txt settings](#configtxt-settings)).  
+No additional scripts or dzVents rules are needed — the plugin updates both devices automatically.
 
 ---
 
@@ -187,5 +167,4 @@ The repository includes an optional **dzVents** script (`scripts/dzVents/garbage
 | Wrong data / empty response | Verify that your postcode and house number are correct for the selected module. |
 | Module 9 (omrin) fails to import | Install the `cryptography` package: `pip install cryptography`. |
 | ximmio returns no data | Find the correct `companyCode` for your municipality (see [Module-specific notes](#module-specific-notes)). |
-| Date format looks wrong | Adjust the **Datumformaat** parameter using the tokens in [Date format tokens](#date-format-tokens). |
-| Script does not trigger | Ensure `GARBAGE_DEVICE_IDX` matches the actual `idx` shown in Domoticz for the GarbageCalendar device. |
+| "Garbage Container" device not updating | Check `VandaagTot` and `MorgenVanaf` in `config.txt`; restart the plugin after saving. |
