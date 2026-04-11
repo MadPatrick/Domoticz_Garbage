@@ -1509,7 +1509,7 @@ class BasePlugin:
         if not future:
             text = 'Geen ophaaldata beschikbaar'
         else:
-            rows = []
+            lines = []
             for r in future:
                 date_str = format_date(r['date'], self._date_fmt)
                 display_type = apply_type_alias(r['type'])
@@ -1530,15 +1530,17 @@ class BasePlugin:
                         f"<span style='color:#999;'>{display_type}</span>"
                     )
 
-                date_cell = (
-                    f"<td style='white-space:nowrap;padding-right:6px;'>"
+                # Fixed-width date block so the type icon starts at the same
+                # horizontal position on every line regardless of date length.
+                date_span = (
+                    f"<span style='display:inline-block;min-width:100px;"
+                    f"white-space:nowrap;'>"
                     f"&#128197; <b><span style='color:#969696;'>{date_str}</span></b>"
-                    f"</td>"
+                    f"</span>"
                 )
-                type_cell = f"<td style='white-space:nowrap;'>{type_html}</td>"
-                rows.append(f"<tr>{date_cell}{type_cell}</tr>")
+                lines.append(f"{date_span} {type_html}")
 
-            text = "<table style='border-collapse:collapse;'>" + ''.join(rows) + "</table>"
+            text = '<br>'.join(lines)
 
         # Recreate device if it was deleted
         if self.UNIT_TEXT not in Devices:
