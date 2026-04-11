@@ -29,10 +29,10 @@
 
 """
 <plugin key="GarbageCalendar" name="GarbageCalendar" author="MadPatrick/jvanderzande" version="1.0.0"
-    wikilink="https://github.com/MadPatrick/GarbageCalendar/wiki"
-    externallink="https://github.com/MadPatrick/GarbageCalendar">
+    wikilink="https://github.com/MadPatrick/Domoticz_Garbage/wiki"
+    externallink="https://github.com/MadPatrick/Domoticz_Garbage">
     <description>
-        <h2>GarbageCalendar</h2><br/>
+        <h2>Garbage Calendar</h2><br/>
         Haalt uw afvalkalender op en toont de komende ophaaldata in een Domoticz tekst-device.<br/><br/>
         <b>Module keuze (Mode1):</b> kies de module die past bij uw gemeente.<br/>
         <b>Extra veld (Mode5)</b> is module-afhankelijk:<br/>
@@ -80,8 +80,7 @@
 </plugin>
 """
 
-import Domoticz  # noqa: F401 – required by the Domoticz plugin framework (FindModule scan)
-
+import Domoticz
 import json
 import re
 import os
@@ -1341,7 +1340,6 @@ MODULES: Dict[str, GarbageModule] = {
     '17': ReinisModule(),
 }
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Domoticz Plugin class
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1522,23 +1520,19 @@ class BasePlugin:
         if Devices[self.UNIT_TEXT].sValue != text:
             Devices[self.UNIT_TEXT].Update(nValue=0, sValue=text)
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Domoticz module-level callbacks (required by the plugin framework)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _plugin = BasePlugin()
 
-
 def onStart():
     global _plugin
     _plugin.onStart()
 
-
 def onStop():
     global _plugin
     _plugin.onStop()
-
 
 def onHeartbeat():
     global _plugin
