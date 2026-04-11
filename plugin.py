@@ -1310,7 +1310,7 @@ MODULES: Dict[str, GarbageModule] = {
 
 class BasePlugin:
     UNIT_TEXT   = 1  # hoofd GarbageCalendar text-device
-    UNIT_NOTIFY = 2  # "Vandaag/Morgen <soort>" - zichtbaar 00:00-13:59 / 16:00-23:59
+    UNIT_NOTIFY = 2  # "Vandaag/Morgen <soort>" - zichtbaar 00:00-15:59 / 16:00-23:59
     HEARTBEAT_SECS = 30
 
     def __init__(self):
@@ -1533,8 +1533,8 @@ class BasePlugin:
             display_type = apply_type_alias(first['type'])
 
             if first['date'] == today:
-                if current_minutes < 14 * 60:
-                    notify_text = f"<span style='color:white;'>Vandaag</span> {display_type}"
+                if current_minutes < 16 * 60:
+                    notify_text = f"Vandaag {display_type}"
             elif first['date'] == tomorrow:
                 if current_minutes >= 16 * 60:
                     notify_text = f"<span style='color:white;'>Morgen</span> {display_type}"
