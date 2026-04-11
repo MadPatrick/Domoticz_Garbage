@@ -28,7 +28,7 @@
 #   Restart Domoticz, then add the plugin via Setup > Hardware.
 
 """
-<plugin key="GarbageCalendar" name="GarbageCalendar" author="MadPatrick/jvanderzande" version="1.0.0"
+<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick/jvanderzande" version="1.0.0"
     wikilink="https://github.com/MadPatrick/Domoticz_Garbage/wiki"
     externallink="https://github.com/MadPatrick/Domoticz_Garbage">
     <description>
