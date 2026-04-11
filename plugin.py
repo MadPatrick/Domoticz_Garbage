@@ -1309,7 +1309,8 @@ MODULES: Dict[str, GarbageModule] = {
 # --------------------------------------------------------------------------------------------
 
 class BasePlugin:
-    UNIT_TEXT = 1
+    UNIT_TEXT   = 1  # hoofd GarbageCalendar text-device
+    UNIT_NOTIFY = 2  # "Vandaag/Morgen <soort>" - zichtbaar 00:00-13:59 / 16:00-23:59
     HEARTBEAT_SECS = 30
 
     def __init__(self):
@@ -1378,6 +1379,10 @@ class BasePlugin:
             self._create_text_device()
             Domoticz.Log('Text device "GarbageCalendar" created')
 
+        if self.UNIT_NOTIFY not in Devices:
+            self._create_notify_device()
+            Domoticz.Log('Text device "GarbageCalendar Melding" created')
+
         self._trigger_fetch()
 
     def onStop(self):
@@ -1406,6 +1411,11 @@ class BasePlugin:
     def _create_text_device(self):
         image_kwarg = {'Image': self.imageID} if self.imageID >= 0 else {}
         Domoticz.Device(Name='GarbageCalendar', Unit=self.UNIT_TEXT,
+                        TypeName='Text', Used=1, **image_kwarg).Create()
+
+    def _create_notify_device(self):
+        image_kwarg = {'Image': self.imageID} if self.imageID >= 0 else {}
+        Domoticz.Device(Name='GarbageCalendar Melding', Unit=self.UNIT_NOTIFY,
                         TypeName='Text', Used=1, **image_kwarg).Create()
 
     def _trigger_fetch(self):
@@ -1440,7 +1450,7 @@ class BasePlugin:
         """Update the Domoticz text device with the next N upcoming events.
 
         Layout per regel:
-            📅  <datum vaste breedte>    <icon> <gekleurde naam>
+            [cal]  <datum vaste breedte>    <icon> <gekleurde naam>
 
         De datumkolom krijgt een vaste breedte via display:inline-block zodat
         de icon+naam op elke regel op dezelfde horizontale positie begint.
@@ -1450,6 +1460,9 @@ class BasePlugin:
 
         with self._lock:
             future = [r for r in self._cached_results if r['date'] >= today]
+
+        # Pass the full future list to the notify helper before slicing for display
+        self._update_notify_devices(future)
 
         future = future[:self._show_events]
 
@@ -1499,6 +1512,37 @@ class BasePlugin:
 
         if Devices[self.UNIT_TEXT].sValue != text:
             Devices[self.UNIT_TEXT].Update(nValue=0, sValue=text)
+
+    def _update_notify_devices(self, future: List[Dict]) -> None:
+        """Update meldingsdevice op basis van ophaaldag en tijd.
+
+        UNIT_NOTIFY (Melding):
+          - Ophaal vandaag, voor 14:00  -> "Vandaag <soort>"
+          - Ophaal morgen, vanaf 16:00  -> "Morgen <soort>"
+          - Anders                      -> leeg
+        """
+        now = datetime.datetime.now()
+        today = now.date()
+        tomorrow = today + datetime.timedelta(days=1)
+        current_minutes = now.hour * 60 + now.minute
+
+        notify_text = ''
+
+        if future:
+            first = future[0]
+            display_type = apply_type_alias(first['type'])
+
+            if first['date'] == today:
+                if current_minutes < 14 * 60:
+                    notify_text = f"Vandaag {display_type}"
+            elif first['date'] == tomorrow:
+                if current_minutes >= 16 * 60:
+                    notify_text = f"Morgen {display_type}"
+
+        if self.UNIT_NOTIFY not in Devices:
+            self._create_notify_device()
+        if Devices[self.UNIT_NOTIFY].sValue != notify_text:
+            Devices[self.UNIT_NOTIFY].Update(nValue=0, sValue=notify_text)
 
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------
