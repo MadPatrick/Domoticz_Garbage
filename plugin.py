@@ -1522,7 +1522,9 @@ class BasePlugin:
                     )
                     lines.append(f'{icon_html}{date_str}: {display_type}')
                 else:
-                    lines.append(f'{date_str}: {display_type}')
+                    emoji = WASTE_EMOJI.get(display_type, '')
+                    prefix = f'{emoji} ' if emoji else ''
+                    lines.append(f'{prefix}{date_str}: {display_type}')
             text = '<br>'.join(lines) if has_icons else '\n'.join(lines)
 
         # Recreate device if it was deleted
