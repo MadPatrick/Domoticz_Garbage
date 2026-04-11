@@ -1310,8 +1310,8 @@ MODULES: Dict[str, GarbageModule] = {
 
 class BasePlugin:
     UNIT_TEXT   = 1  # hoofd GarbageCalendar text-device
-    UNIT_NOTIFY = 2  # "Vandaag/Morgen <soort>" — zichtbaar 00:00-13:59 / 16:00-23:59
-    UNIT_EXTRA  = 3  # ruwe eerste regel — zichtbaar 16:00 dag vóór t/m 14:59 ophaaldag
+    UNIT_NOTIFY = 2  # "Vandaag/Morgen <soort>" - zichtbaar 00:00-13:59 / 16:00-23:59
+    UNIT_EXTRA  = 3  # ruwe eerste regel - zichtbaar 16:00 dag voor t/m 14:59 ophaaldag
     HEARTBEAT_SECS = 30
 
     def __init__(self):
@@ -1460,7 +1460,7 @@ class BasePlugin:
         """Update the Domoticz text device with the next N upcoming events.
 
         Layout per regel:
-            📅  <datum vaste breedte>    <icon> <gekleurde naam>
+            [cal]  <datum vaste breedte>    <icon> <gekleurde naam>
 
         De datumkolom krijgt een vaste breedte via display:inline-block zodat
         de icon+naam op elke regel op dezelfde horizontale positie begint.
@@ -1527,14 +1527,14 @@ class BasePlugin:
         """Update meldingsdevice en extra-regeldevice op basis van ophaaldag en tijd.
 
         UNIT_NOTIFY (Melding):
-          - Ophaal vandaag, vóór 14:00  → "Vandaag <soort>"
-          - Ophaal morgen, vanaf 16:00  → "Morgen <soort>"
-          - Anders                      → leeg
+          - Ophaal vandaag, voor 14:00  -> "Vandaag <soort>"
+          - Ophaal morgen, vanaf 16:00  -> "Morgen <soort>"
+          - Anders                      -> leeg
 
         UNIT_EXTRA (Eerste Regel):
-          - Ophaal vandaag, vóór 15:00  → "<wd dd mmm>: <soort>"
-          - Ophaal morgen, vanaf 16:00  → "<wd dd mmm>: <soort>"
-          - Anders                      → leeg
+          - Ophaal vandaag, voor 15:00  -> "<wd dd mmm>: <soort>"
+          - Ophaal morgen, vanaf 16:00  -> "<wd dd mmm>: <soort>"
+          - Anders                      -> leeg
         """
         now = datetime.datetime.now()
         today = now.date()
