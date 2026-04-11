@@ -258,7 +258,7 @@ def parse_dutch_date(s: str) -> Optional[datetime.date]:
 # HTTP helpers
 # --------------------------------------------------------------------------------------------
 
-DEFAULT_HEADERS = {'User-Agent': 'GarbageCalendar-DomoticzPlugin/1.0'}
+DEFAULT_HEADERS = {'User-Agent': 'Garbage Calendar-DomoticzPlugin/1.0'}
 
 
 def http_get(url: str, headers: Optional[Dict] = None, timeout: int = 30) -> str:
@@ -1352,7 +1352,7 @@ MODULES: Dict[str, GarbageModule] = {
 # --------------------------------------------------------------------------------------------
 
 class BasePlugin:
-    UNIT_TEXT   = 1  # hoofd GarbageCalendar text-device
+    UNIT_TEXT   = 1  # hoofd Garbage Calendar text-device
     UNIT_NOTIFY = 2  # "Vandaag/Morgen <soort>" - tijden configureerbaar via config.txt
     HEARTBEAT_SECS = 30
 
@@ -1415,7 +1415,7 @@ class BasePlugin:
             return
 
         Domoticz.Log(
-            f'GarbageCalendar started | module: {self._module.name} | '
+            f'Garbage Calendar started | module: {self._module.name} | '
             f'postcode: {self._zipcode} | huisnr: {self._housenr}{self._housenrsuf} | '
             f'refresh at: {self._update_hour:02d}:{self._update_min:02d} | '
             f'events: {self._show_events} | '
@@ -1425,16 +1425,16 @@ class BasePlugin:
 
         if self.UNIT_TEXT not in Devices:
             self._create_text_device()
-            Domoticz.Log('Text device "GarbageCalendar" created')
+            Domoticz.Log('Text device "Garbage Calendar" created')
 
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
-            Domoticz.Log('Text device "GarbageCalendar Melding" created')
+            Domoticz.Log('Text device "Garbage Container" created')
 
         self._trigger_fetch()
 
     def onStop(self):
-        Domoticz.Log('GarbageCalendar stopped')
+        Domoticz.Log('Garbage Calendar stopped')
 
     def onHeartbeat(self):
         if not self._module:
@@ -1458,12 +1458,12 @@ class BasePlugin:
 
     def _create_text_device(self):
         image_kwarg = {'Image': self.imageID} if self.imageID >= 0 else {}
-        Domoticz.Device(Name='GarbageCalendar', Unit=self.UNIT_TEXT,
+        Domoticz.Device(Name='Garbage Calendar', Unit=self.UNIT_TEXT,
                         TypeName='Text', Used=1, **image_kwarg).Create()
 
     def _create_notify_device(self):
         image_kwarg = {'Image': self.imageID} if self.imageID >= 0 else {}
-        Domoticz.Device(Name='GarbageCalendar Melding', Unit=self.UNIT_NOTIFY,
+        Domoticz.Device(Name='Garbage Container', Unit=self.UNIT_NOTIFY,
                         TypeName='Text', Used=1, **image_kwarg).Create()
 
     def _trigger_fetch(self):
