@@ -1518,25 +1518,27 @@ class BasePlugin:
                 if icon_url:
                     # Module provided a real image URL (e.g. opzet_api): use an inline img tag
                     safe_url = _html.escape(icon_url, quote=True)
-                    icon_html = (
+                    type_html = (
                         f'<img src="{safe_url}" '
                         f'style="height:18px;vertical-align:middle;margin-right:4px;">'
-                    )
-                    lines.append(
-                        f"{icon_html}"
-                        f"&#128197; <b><span style='color:#969696;'>{date_str}</span></b> "
                         f"{display_type}"
                     )
                 else:
                     # Use HTML entity icon + coloured label from WASTE_ICONS
-                    icon_html = WASTE_ICONS.get(
+                    type_html = WASTE_ICONS.get(
                         display_type,
                         f"<span style='color:#999;'>{display_type}</span>"
                     )
-                    lines.append(
-                        f"&#128197; <b><span style='color:#969696;'>{date_str}</span></b> "
-                        f"{icon_html}"
-                    )
+
+                # Fixed-width date block so the type icon starts at the same
+                # horizontal position on every line regardless of date length.
+                date_span = (
+                    f"<span style='display:inline-block;min-width:76px;"
+                    f"white-space:nowrap;margin-right:4px;'>"
+                    f"&#128197; <b><span style='color:#969696;'>{date_str}</span></b>"
+                    f"</span>"
+                )
+                lines.append(f"{date_span}{type_html}")
 
             text = '<br>'.join(lines)
 
