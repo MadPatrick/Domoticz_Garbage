@@ -122,16 +122,17 @@ TYPE_ALIASES = [
     ('kerstbomen', 'Kerstbomen'),
 ]
 
-# Maps canonical display names (from TYPE_ALIASES) to emoji icons shown when
-# no image icon_url is available for an entry.
-WASTE_EMOJI: Dict[str, str] = {
-    'GFT':        '🟢',
-    'Papier':     '📦',
-    'Restafval':  '🗑️',
-    'PMD':        '🔵',
-    'Glas':       '🫙',
-    'Textiel':    '👕',
-    'Kerstbomen': '🎄',
+# Maps canonical display names (from TYPE_ALIASES) to HTML icon strings.
+# Uses HTML entities + inline style so Domoticz Text devices render them correctly,
+# just like other Domoticz plugins that use styled HTML in sValue.
+WASTE_ICONS: Dict[str, str] = {
+    'GFT':        "&#127807; <span style='color:#4caf50;'>GFT</span>",
+    'Papier':     "&#128220; <span style='color:#2196f3;'>Papier</span>",
+    'Restafval':  "&#128465; <span style='color:#607d8b;'>Restafval</span>",
+    'PMD':        "&#9851; <span style='color:#ff9800;'>PMD</span>",
+    'Glas':       "&#129753; <span style='color:#00bcd4;'>Glas</span>",
+    'Textiel':    "&#128084; <span style='color:#9c27b0;'>Textiel</span>",
+    'Kerstbomen': "&#127876; <span style='color:#388e3c;'>Kerstbomen</span>",
 }
 
 
@@ -1508,24 +1509,36 @@ class BasePlugin:
         if not future:
             text = 'Geen ophaaldata beschikbaar'
         else:
-            has_icons = any(r.get('icon_url') for r in future)
             lines = []
             for r in future:
                 date_str = format_date(r['date'], self._date_fmt)
                 display_type = apply_type_alias(r['type'])
                 icon_url = r.get('icon_url', '')
+
                 if icon_url:
+                    # Module provided a real image URL (e.g. opzet_api): use an inline img tag
                     safe_url = _html.escape(icon_url, quote=True)
                     icon_html = (
                         f'<img src="{safe_url}" '
                         f'style="height:18px;vertical-align:middle;margin-right:4px;">'
                     )
-                    lines.append(f'{icon_html}{date_str}: {display_type}')
+                    lines.append(
+                        f"{icon_html}"
+                        f"&#128197; <b><span style='color:#969696;'>{date_str}</span></b> "
+                        f"{display_type}"
+                    )
                 else:
-                    emoji = WASTE_EMOJI.get(display_type, '')
-                    prefix = f'{emoji} ' if emoji else ''
-                    lines.append(f'{prefix}{date_str}: {display_type}')
-            text = '<br>'.join(lines) if has_icons else '\n'.join(lines)
+                    # Use HTML entity icon + coloured label from WASTE_ICONS
+                    icon_html = WASTE_ICONS.get(
+                        display_type,
+                        f"<span style='color:#999;'>{display_type}</span>"
+                    )
+                    lines.append(
+                        f"&#128197; <b><span style='color:#969696;'>{date_str}</span></b> "
+                        f"{icon_html}"
+                    )
+
+            text = '<br>'.join(lines)
 
         # Recreate device if it was deleted
         if self.UNIT_TEXT not in Devices:
@@ -1533,6 +1546,7 @@ class BasePlugin:
 
         if Devices[self.UNIT_TEXT].sValue != text:
             Devices[self.UNIT_TEXT].Update(nValue=0, sValue=text)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Domoticz module-level callbacks (required by the plugin framework)
