@@ -1311,7 +1311,6 @@ MODULES: Dict[str, GarbageModule] = {
 class BasePlugin:
     UNIT_TEXT   = 1  # hoofd GarbageCalendar text-device
     UNIT_NOTIFY = 2  # "Vandaag/Morgen <soort>" - zichtbaar 00:00-13:59 / 16:00-23:59
-    UNIT_EXTRA  = 3  # ruwe eerste regel - zichtbaar 16:00 dag voor t/m 14:59 ophaaldag
     HEARTBEAT_SECS = 30
 
     def __init__(self):
@@ -1384,10 +1383,6 @@ class BasePlugin:
             self._create_notify_device()
             Domoticz.Log('Text device "GarbageCalendar Melding" created')
 
-        if self.UNIT_EXTRA not in Devices:
-            self._create_extra_device()
-            Domoticz.Log('Text device "GarbageCalendar Eerste Regel" created')
-
         self._trigger_fetch()
 
     def onStop(self):
@@ -1421,11 +1416,6 @@ class BasePlugin:
     def _create_notify_device(self):
         image_kwarg = {'Image': self.imageID} if self.imageID >= 0 else {}
         Domoticz.Device(Name='GarbageCalendar Melding', Unit=self.UNIT_NOTIFY,
-                        TypeName='Text', Used=1, **image_kwarg).Create()
-
-    def _create_extra_device(self):
-        image_kwarg = {'Image': self.imageID} if self.imageID >= 0 else {}
-        Domoticz.Device(Name='GarbageCalendar Eerste Regel', Unit=self.UNIT_EXTRA,
                         TypeName='Text', Used=1, **image_kwarg).Create()
 
     def _trigger_fetch(self):
@@ -1524,16 +1514,11 @@ class BasePlugin:
             Devices[self.UNIT_TEXT].Update(nValue=0, sValue=text)
 
     def _update_notify_devices(self, future: List[Dict]) -> None:
-        """Update meldingsdevice en extra-regeldevice op basis van ophaaldag en tijd.
+        """Update meldingsdevice op basis van ophaaldag en tijd.
 
         UNIT_NOTIFY (Melding):
           - Ophaal vandaag, voor 14:00  -> "Vandaag <soort>"
           - Ophaal morgen, vanaf 16:00  -> "Morgen <soort>"
-          - Anders                      -> leeg
-
-        UNIT_EXTRA (Eerste Regel):
-          - Ophaal vandaag, voor 15:00  -> "<wd dd mmm>: <soort>"
-          - Ophaal morgen, vanaf 16:00  -> "<wd dd mmm>: <soort>"
           - Anders                      -> leeg
         """
         now = datetime.datetime.now()
@@ -1542,33 +1527,22 @@ class BasePlugin:
         current_minutes = now.hour * 60 + now.minute
 
         notify_text = ''
-        extra_text = ''
 
         if future:
             first = future[0]
             display_type = apply_type_alias(first['type'])
-            plain_date = format_date(first['date'], self._date_fmt)
-            plain_line = f"{plain_date}: {display_type}"
 
             if first['date'] == today:
                 if current_minutes < 14 * 60:
                     notify_text = f"Vandaag {display_type}"
-                if current_minutes < 15 * 60:
-                    extra_text = plain_line
             elif first['date'] == tomorrow:
                 if current_minutes >= 16 * 60:
                     notify_text = f"Morgen {display_type}"
-                    extra_text = plain_line
 
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
         if Devices[self.UNIT_NOTIFY].sValue != notify_text:
             Devices[self.UNIT_NOTIFY].Update(nValue=0, sValue=notify_text)
-
-        if self.UNIT_EXTRA not in Devices:
-            self._create_extra_device()
-        if Devices[self.UNIT_EXTRA].sValue != extra_text:
-            Devices[self.UNIT_EXTRA].Update(nValue=0, sValue=extra_text)
 
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------
