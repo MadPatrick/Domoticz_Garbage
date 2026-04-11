@@ -1533,12 +1533,12 @@ class BasePlugin:
                 # Fixed-width date block so the type icon starts at the same
                 # horizontal position on every line regardless of date length.
                 date_span = (
-                    f"<span style='display:inline-block;min-width:100px;"
-                    f"white-space:nowrap;'>"
+                    f"<span style='display:inline-block;min-width:76px;"
+                    f"white-space:nowrap;margin-right:4px;'>"
                     f"&#128197; <b><span style='color:#969696;'>{date_str}</span></b>"
                     f"</span>"
                 )
-                lines.append(f"{date_span} {type_html}")
+                lines.append(f"{date_span}{type_html}")
 
             text = '<br>'.join(lines)
 
