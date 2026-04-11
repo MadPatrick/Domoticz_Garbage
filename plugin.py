@@ -1492,8 +1492,9 @@ class BasePlugin:
         if self.UNIT_TEXT not in Devices:
             self._create_text_device()
 
-        if Devices[self.UNIT_TEXT].sValue != text:
-            Devices[self.UNIT_TEXT].Update(nValue=0, sValue=text)
+        n_value = 1 if (future and future[0]['date'] == today) else 0
+        if Devices[self.UNIT_TEXT].sValue != text or Devices[self.UNIT_TEXT].nValue != n_value:
+            Devices[self.UNIT_TEXT].Update(nValue=n_value, sValue=text)
 
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------
