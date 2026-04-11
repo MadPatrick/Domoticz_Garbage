@@ -296,7 +296,7 @@ class GarbageModule:
 # --------------------------------------------------------------------------------------------
 
 class MijnAfvalwijzerModule(GarbageModule):
-    name = 'm_mijnafvalwijzer'
+    name = 'MijnAfvalwijzer'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         host = extra.strip() if extra.strip() else 'www.mijnafvalwijzer.nl'
@@ -346,7 +346,7 @@ class MijnAfvalwijzerModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class MijnAfvalwijzerApiModule(GarbageModule):
-    name = 'm_mijnafvalwijzer_api'
+    name = 'MijnAfvalwijzerAPI'
     _API_KEY = '5ef443e778f41c4f75c69459eea6e6ae0c2d92de729aa0fc61653815fbd6a8ca'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
@@ -394,7 +394,7 @@ class MijnAfvalwijzerApiModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class XimmioModule(GarbageModule):
-    name = 'm_ximmio'
+    name = 'Ximmio'
     _HOSTS = ['https://wasteprod2api.ximmio.com', 'https://wasteapi.2go-mobile.com']
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
@@ -473,7 +473,7 @@ class XimmioModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class RovaApiModule(GarbageModule):
-    name = 'm_rova_api'
+    name = 'RovaAPI'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         today = datetime.date.today()
@@ -513,7 +513,7 @@ class RovaApiModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class Rd4ApiModule(GarbageModule):
-    name = 'm_rd4_api'
+    name = 'RD4API'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         today = datetime.date.today()
@@ -553,7 +553,7 @@ class Rd4ApiModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class OpzetModule(GarbageModule):
-    name = 'm_opzet'
+    name = 'Opzet'
 
     def _get_bag_id(self, hostname: str, zipcode: str, housenr: str, housenrsuf: str) -> str:
         url = f'https://{hostname}/rest/adressen/{zipcode}-{housenr}'
@@ -615,7 +615,7 @@ class OpzetModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class OpzetApiModule(OpzetModule):
-    name = 'm_opzet_api'
+    name = 'OpzetAPI'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         hostname = extra.strip()
@@ -683,7 +683,7 @@ class OpzetApiModule(OpzetModule):
 # --------------------------------------------------------------------------------------------
 
 class RecycleAppBeModule(GarbageModule):
-    name = 'm_recycleapp-be'
+    name = 'RecycleApp.be'
     _BASE_URL = 'https://api.fostplus.be/recycle-public/app/v1'
     _SECRET = (
         'Op2tDi2pBmh1wzeC5TaN2U3knZan7ATcfOQgxh4vqC0mDKmnPP2qzoQusmInpglfIkxx8SZrasBqi5zgMSvy'
@@ -766,7 +766,7 @@ class RecycleAppBeModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class OmrinModule(GarbageModule):
-    name = 'm_omrin'
+    name = 'Omrin'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         try:
@@ -859,7 +859,7 @@ class OmrinModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class BurgerportaalModule(GarbageModule):
-    name = 'm_burgerportaal'
+    name = 'Burgerportaal'
     _FIREBASE_KEY = 'AIzaSyA6NkRqJypTfP-cjWzrZNFJzPUbBaGjOdk'
     _BP_CODES: Dict[str, str] = {
         'assen': '138204213565303512',
@@ -978,7 +978,7 @@ class BurgerportaalModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class RmnModule(BurgerportaalModule):
-    name = 'm_rmn'
+    name = 'RMN'
     _RMN_ORG_ID = '138204213564933597'
 
     def __init__(self, token_file: Optional[str] = None):
@@ -994,7 +994,7 @@ class RmnModule(BurgerportaalModule):
 # --------------------------------------------------------------------------------------------
 
 class DeAfvalAppModule(GarbageModule):
-    name = 'm_deafvalapp'
+    name = 'DeAfvalApp'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         today = datetime.date.today()
@@ -1039,7 +1039,7 @@ class DeAfvalAppModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class ZuidLimburgModule(GarbageModule):
-    name = 'm_zuidlimburg'
+    name = 'ZuidLimburg'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         today = datetime.date.today()
@@ -1090,7 +1090,7 @@ class ZuidLimburgModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class MontferlandModule(GarbageModule):
-    name = 'm_montferland'
+    name = 'Montferland'
     _BASE = 'http://afvalwijzer.afvaloverzicht.nl'
     _PWD = urllib.parse.quote('gsd$2014')
 
@@ -1153,7 +1153,7 @@ class MontferlandModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class CsvFileModule(GarbageModule):
-    name = 'm_csv_file'
+    name = 'CSV-bestand'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         csv_path = extra.strip()
@@ -1199,7 +1199,7 @@ class CsvFileModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class AfvalInfoModule(GarbageModule):
-    name = 'm_afvalinfo'
+    name = 'AfvalInfo'
     _BASE = 'https://trashapi.azurewebsites.net/trash'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
@@ -1252,7 +1252,7 @@ class AfvalInfoModule(GarbageModule):
 # --------------------------------------------------------------------------------------------
 
 class ReinisModule(OpzetApiModule):
-    name = 'm_reinis'
+    name = 'Reinis'
     _HOSTNAME = 'reinis.nl'
 
     def _get_bag_id(self, hostname, zipcode, housenr, housenrsuf):
