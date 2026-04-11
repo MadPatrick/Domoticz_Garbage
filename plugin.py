@@ -1457,8 +1457,14 @@ class BasePlugin:
             text = 'Geen ophaaldata beschikbaar'
         else:
             lines = []
+            tomorrow = today + datetime.timedelta(days=1)
             for r in future:
-                date_str = format_date(r['date'], self._date_fmt)
+                if r['date'] == today:
+                    date_str = 'Vandaag'
+                elif r['date'] == tomorrow:
+                    date_str = 'Morgen'
+                else:
+                    date_str = format_date(r['date'], self._date_fmt)
                 display_type = apply_type_alias(r['type'])
                 icon_url = r.get('icon_url', '')
 
