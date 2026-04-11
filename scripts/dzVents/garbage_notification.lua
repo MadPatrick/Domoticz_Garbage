@@ -31,6 +31,7 @@ return {
             'at 14:00',  -- wis "Vandaag"-melding op de ophaaldag
             'at 16:00',  -- zet "Morgen"-melding als ophaal morgen is
         },
+        system = { 'start' },  -- ook uitvoeren bij (her)start van Domoticz
     },
 
     execute = function(domoticz, item)
