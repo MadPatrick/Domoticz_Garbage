@@ -275,6 +275,12 @@ class GarbageModule:
         except Exception:
             pass
 
+    def _debug(self, msg: str) -> None:
+        try:
+            Domoticz.Debug(f'[GC/{self.name}] {msg}')
+        except Exception:
+            pass
+
     def _error(self, msg: str) -> None:
         try:
             Domoticz.Error(f'[GC/{self.name}] {msg}')
@@ -623,7 +629,7 @@ class OpzetApiModule(OpzetModule):
         if not bag_id:
             self._error('No bagId found - check Zipcode, Housenr and Hostname')
             return []
-        self._log(f'bagId: {bag_id}')
+        self._debug(f'bagId: {bag_id}')
 
         raw_types = http_get(f'https://{hostname}/rest/adressen/{bag_id}/afvalstromen')
         type_map: Dict[int, str] = {}
@@ -646,7 +652,7 @@ class OpzetApiModule(OpzetModule):
         results = []
         for year in [today.year, today.year + 1]:
             url = f'https://{hostname}/rest/adressen/{bag_id}/kalender/{year}'
-            self._log(f'GET {url}')
+            self._debug(f'GET {url}')
             raw = http_get(url)
             if not raw or raw.strip().startswith('[]'):
                 continue
@@ -1252,7 +1258,7 @@ class ReinisModule(OpzetApiModule):
 
     def _get_bag_id(self, hostname, zipcode, housenr, housenrsuf):
         url = f'https://{hostname}/adressen/{zipcode}:{housenr}'
-        self._log(f'GET {url}')
+        self._debug(f'GET {url}')
         raw = http_get(url)
         if not raw or raw.strip().startswith('[]'):
             self._error('Empty or [] address response')
