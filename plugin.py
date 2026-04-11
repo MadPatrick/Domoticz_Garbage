@@ -1442,9 +1442,9 @@ class BasePlugin:
         Layout per regel:
             📅  <datum vaste breedte>    <icon> <gekleurde naam>
 
-        De datum-kolom krijgt een vaste breedte via display:inline-block zodat
+        De datumkolom krijgt een vaste breedte via display:inline-block zodat
         de icon+naam op elke regel op dezelfde horizontale positie begint.
-        Regels worden gescheiden door <br> — betrouwbaarder in Domoticz dan <table>.
+        Regels worden gescheiden door <br>  betrouwbaarder in Domoticz dan <table>.
         """
         today = datetime.date.today()
 
