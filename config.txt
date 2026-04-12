@@ -1,5 +1,5 @@
 # GarbageCalendar - configuration file
-# Adjust the values ​​below as desired and save.
+# Adjust the values below as desired and save.
 # The plugin reads this file at every restart.
 
 # Time at which the calendar is refreshed daily (format HH:MM)
@@ -9,13 +9,10 @@ UpdateTime = 02:30
 ShowEvents = 3
 
 # "Today <type>" is displayed as long as the current time is before this time (HH:MM)
-TodayTime = 16:00
+TodayTime = 14:00
 
 # "Tomorrow <type>" will be displayed as soon as the current time reaches this time (HH:MM)
 TomorrowTime = 16:00
-
-# Note: enabling/disabling notifications is now done via the plugin's "Enable notification"
-# dropdown in the Domoticz hardware configuration panel (Mode6).
 
 # Time at which the notification is sent on the pickup day (or the day before) (HH:MM)
 NotifyTime = 07:00
@@ -24,10 +21,10 @@ NotifyTime = 07:00
 NotifyLevel = 1
 
 # Label shown when the pickup is today (default: Today)
-LabelToday = Today
+LabelToday = Vandaag
 
 # Label shown when the pickup is tomorrow (default: Tomorrow)
-LabelTomorrow = Tomorrow
+LabelTomorrow = Morgen
 
 # Text shown when no upcoming pickup data is available (default: No collection data available)
-LabelNoData = No collection data available
+LabelNoData = Geen verzamelgegevens beschikbaar
