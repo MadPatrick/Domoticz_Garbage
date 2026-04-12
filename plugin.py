@@ -1600,11 +1600,10 @@ class BasePlugin:
             _raw_port = Parameters.get('Port', '') or ''
             port = _raw_port if (_raw_port.isdigit() and 1 <= int(_raw_port) <= 65535) else '8080'
             qs = urllib.parse.urlencode({
-                'type':     'command',
-                'param':    'sendnotification',
-                'subject':  subject,
-                'body':     '',
-                'priority': str(self._notify_level),
+                'type':    'command',
+                'param':   'sendnotification',
+                'subject': subject,
+                'body':    subject,
             })
             url = f'http://127.0.0.1:{port}/json.htm?{qs}'
             req = urllib.request.Request(url)  # noqa: S310
