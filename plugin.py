@@ -1660,14 +1660,14 @@ class BasePlugin:
             display_type = apply_type_alias(first['type'])
 
             # Emoji variant
-            ICON = "<span style='font-size:1.5em;'>♻️</span>"
+            ICON = "<span style='font-size:1.5em;'>&#x267B;&#xFE0F;</span>"
 
             if first['date'] == today:
                 if current_minutes < self._today_to_min:
-                    notify_text = f"{ICON} <span style='color:white;'>{self._label_today} : </span> {display_type}"
+                    notify_text = f"{ICON} <span style='color:white;'>Vandaag : </span> {display_type}"
             elif first['date'] == tomorrow:
                 if current_minutes >= self._tomorrow_until_min:
-                    notify_text = f"{ICON} <span style='color:white;'>{self._label_tomorrow} : </span> {display_type}"
+                    notify_text = f"{ICON} <span style='color:white;'>Morgen : </span> {display_type}"
 
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
