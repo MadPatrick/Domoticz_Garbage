@@ -1452,13 +1452,13 @@ class BasePlugin:
 
         Domoticz.Log(
             f'Garbage Calendar started | module: {self._module.name} | '
-            f'postcode: {self._zipcode} | huisnr: {self._housenr}{self._housenrsuf} | '
+            f'zipcode: {self._zipcode} | housenr: {self._housenr}{self._housenrsuf} | '
             f'refresh at: {self._update_hour:02d}:{self._update_min:02d} | '
             f'events: {self._show_events} | '
-            f'vandaag tot: {self._today_to_min // 60:02d}:{self._today_to_min % 60:02d} | '
-            f'morgen vanaf: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d} | '
-            f'notificatie: {"aan" if self._notify_enabled else "uit"}'
-            + (f' om {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}' if self._notify_enabled else '')
+            f'today until: {self._today_to_min // 60:02d}:{self._today_to_min % 60:02d} | '
+            f'tomorrow from: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d} | '
+            f'notification: {"on" if self._notify_enabled else "off"}'
+            + (f' at {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}' if self._notify_enabled else '')
         )
 
         if self.UNIT_TEXT not in Devices:
