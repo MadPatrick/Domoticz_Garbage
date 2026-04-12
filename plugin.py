@@ -1596,7 +1596,20 @@ class BasePlugin:
             return
 
         try:
-            Domoticz.Notify('GarbageCalendar', subject, self._notify_level, '', '', 0)
+            port = Parameters.get('Port', '8080') or '8080'
+            qs = urllib.parse.urlencode({
+                'type':     'command',
+                'param':    'sendnotification',
+                'subject':  subject,
+                'body':     '',
+                'priority': str(self._notify_level),
+            })
+            url = f'http://127.0.0.1:{port}/json.htm?{qs}'
+            with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310
+                result = json.loads(resp.read())
+            if result.get('status') != 'OK':
+                Domoticz.Error(f'[GC] Notificatie geweigerd door Domoticz: {result}')
+                return
             self._notify_sent_date = today
             Domoticz.Log(f'[GC] Notificatie verstuurd: {subject}')
         except Exception as exc:
