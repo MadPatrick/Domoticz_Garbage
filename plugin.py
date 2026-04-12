@@ -71,6 +71,14 @@
         <param field="Mode3" label="House number" width="75px" required="false" default="" />
         <param field="Mode4" label="House number suffix" width="75px" required="false" default="" />
         <param field="Mode5" label="Extra: Hostname / Street / BPName / Companycode / CSV-pad / City(afvalinfo)" width="300px" required="false" default="" />
+        <param field="Mode6" label="Enable notification" width="100px">
+            <options>
+                <option label="False" value="false" default="true"/>
+                <option label="True" value="true"/>
+            </options>
+        </param>
+        <param field="Address" label="Domoticz IP" width="150px" required="false" default="127.0.0.1" />
+        <param field="Port" label="Domoticz Port" width="75px" required="false" default="8080" />
     </params>
 </plugin>
 """
@@ -79,6 +87,7 @@ import Domoticz
 import json
 import re
 import os
+import base64
 import html as _html
 import datetime
 import urllib.request
@@ -95,10 +104,15 @@ _PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 _CONFIG_FILE = os.path.join(_PLUGIN_DIR, 'config.txt')
 
 _CONFIG_DEFAULTS: Dict[str, str] = {
-    'UpdateTime':  '02:30',
-    'ShowEvents':  '3',
-    'TodayTime':  '16:00',
-    'TomorrowTime': '16:00',
+    'UpdateTime':    '02:30',
+    'ShowEvents':    '3',
+    'TodayTime':     '16:00',
+    'TomorrowTime':  '16:00',
+    'NotifyTime':    '07:00',
+    'NotifyLevel':   '1',
+    'LabelToday':    'Today',
+    'LabelTomorrow': 'Tomorrow',
+    'LabelNoData':   'No collection data available',
 }
 
 
@@ -1368,11 +1382,20 @@ class BasePlugin:
         self._update_min = 30
         self._today_to_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['TodayTime'], 16 * 60)
         self._tomorrow_until_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['TomorrowTime'], 16 * 60)
+        self._notify_enabled = False
+        self._notify_time_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['NotifyTime'], 7 * 60)
+        self._notify_level = 1
+        self._notify_sent_date: Optional[datetime.date] = None
         self._last_fetch_date: Optional[datetime.date] = None
         self._cached_results: List[Dict] = []
         self._fetching = False
         self._lock = threading.Lock()
         self.imageID = -1
+        self._label_today = _CONFIG_DEFAULTS['LabelToday']
+        self._label_tomorrow = _CONFIG_DEFAULTS['LabelTomorrow']
+        self._label_nodata = _CONFIG_DEFAULTS['LabelNoData']
+        self._domoticz_ip = '127.0.0.1'
+        self._domoticz_port = '8080'
 
     def onStart(self):
         Domoticz.Heartbeat(self.HEARTBEAT_SECS)
@@ -1398,6 +1421,19 @@ class BasePlugin:
 
         self._today_to_min = _parse_hhmm_to_min(cfg.get('TodayTime', '16:00'), 16 * 60)
         self._tomorrow_until_min = _parse_hhmm_to_min(cfg.get('TomorrowTime', '16:00'), 16 * 60)
+        self._notify_enabled = Parameters.get('Mode6', 'false').strip().lower() == 'true'
+        self._domoticz_ip = Parameters.get('Address', '127.0.0.1').strip() or '127.0.0.1'
+        _raw_port = Parameters.get('Port', '8080').strip()
+        self._domoticz_port = _raw_port if (_raw_port.isdigit() and 1 <= int(_raw_port) <= 65535) else '8080'
+        self._notify_time_min = _parse_hhmm_to_min(cfg.get('NotifyTime', '07:00'), 7 * 60)
+        try:
+            self._notify_level = max(-2, min(2, int(cfg.get('NotifyLevel', '1') or '1')))
+        except ValueError:
+            self._notify_level = 1
+
+        self._label_today = cfg.get('LabelToday', _CONFIG_DEFAULTS['LabelToday']).strip() or _CONFIG_DEFAULTS['LabelToday']
+        self._label_tomorrow = cfg.get('LabelTomorrow', _CONFIG_DEFAULTS['LabelTomorrow']).strip() or _CONFIG_DEFAULTS['LabelTomorrow']
+        self._label_nodata = cfg.get('LabelNoData', _CONFIG_DEFAULTS['LabelNoData']).strip() or _CONFIG_DEFAULTS['LabelNoData']
 
         try:
             if "Garbage" not in Images:
@@ -1420,7 +1456,9 @@ class BasePlugin:
             f'refresh at: {self._update_hour:02d}:{self._update_min:02d} | '
             f'events: {self._show_events} | '
             f'vandaag tot: {self._today_to_min // 60:02d}:{self._today_to_min % 60:02d} | '
-            f'morgen vanaf: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d}'
+            f'morgen vanaf: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d} | '
+            f'notificatie: {"aan" if self._notify_enabled else "uit"}'
+            + (f' om {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}' if self._notify_enabled else '')
         )
 
         if self.UNIT_TEXT not in Devices:
@@ -1506,15 +1544,15 @@ class BasePlugin:
         future = future[:self._show_events]
 
         if not future:
-            text = 'Geen ophaaldata beschikbaar'
+            text = self._label_nodata
         else:
             lines = []
             tomorrow = today + datetime.timedelta(days=1)
             for r in future:
                 if r['date'] == today:
-                    date_str = 'Vandaag'
+                    date_str = self._label_today
                 elif r['date'] == tomorrow:
-                    date_str = 'Morgen'
+                    date_str = self._label_tomorrow
                 else:
                     date_str = format_date(r['date'], self._date_fmt)
                 display_type = apply_type_alias(r['type'])
@@ -1552,6 +1590,63 @@ class BasePlugin:
         if Devices[self.UNIT_TEXT].sValue != text:
             Devices[self.UNIT_TEXT].Update(nValue=0, sValue=text)
 
+    def _send_notify_if_needed(self, future: List[Dict]) -> None:
+        """Send a Domoticz notification (e-mail / push) at the configured NotifyTime."""
+        if not self._notify_enabled:
+            return
+
+        now = datetime.datetime.now()
+        today = now.date()
+        tomorrow = today + datetime.timedelta(days=1)
+        current_minutes = now.hour * 60 + now.minute
+
+        if current_minutes < self._notify_time_min:
+            return
+        if self._notify_sent_date == today:
+            return
+
+        if not future:
+            return
+
+        first = future[0]
+        display_type = apply_type_alias(first['type'])
+
+        if first['date'] == today:
+            subject = f'{self._label_today}: {display_type}'
+        elif first['date'] == tomorrow:
+            subject = f'{self._label_tomorrow}: {display_type}'
+        else:
+            return
+
+        try:
+            qs = urllib.parse.urlencode({
+                'type':    'command',
+                'param':   'sendnotification',
+                'subject': subject,
+                'body':    subject,
+            })
+            url = f'http://{self._domoticz_ip}:{self._domoticz_port}/json.htm?{qs}'
+            req = urllib.request.Request(url)  # noqa: S310
+            username = Parameters.get('Username', '') or ''
+            password = Parameters.get('Password', '') or ''
+            if username:
+                credentials = base64.b64encode(f'{username}:{password}'.encode()).decode()
+                req.add_header('Authorization', f'Basic {credentials}')
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                raw = resp.read()
+            try:
+                result = json.loads(raw)
+            except json.JSONDecodeError:
+                Domoticz.Error(f'[GC] Notificatie versturen mislukt: onverwacht antwoord van Domoticz: {raw[:200]!r}')
+                return
+            if result.get('status') != 'OK':
+                Domoticz.Error(f'[GC] Notificatie geweigerd door Domoticz: {result}')
+                return
+            self._notify_sent_date = today
+            Domoticz.Log(f'[GC] Notificatie verstuurd: {subject}')
+        except Exception as exc:
+            Domoticz.Error(f'[GC] Notificatie versturen mislukt: {type(exc).__name__}: {exc}')
+
     def _update_notify_devices(self, future: List[Dict]) -> None:
         now = datetime.datetime.now()
         today = now.date()
@@ -1565,7 +1660,7 @@ class BasePlugin:
             display_type = apply_type_alias(first['type'])
 
             # Emoji variant
-            ICON = "<span style='font-size:1.5em;'>♻️</span>"
+            ICON = "<span style='font-size:1.5em;'>&#x267B;&#xFE0F;</span>"
 
             if first['date'] == today:
                 if current_minutes < self._today_to_min:
@@ -1578,6 +1673,8 @@ class BasePlugin:
             self._create_notify_device()
         if Devices[self.UNIT_NOTIFY].sValue != notify_text:
             Devices[self.UNIT_NOTIFY].Update(nValue=0, sValue=notify_text)
+
+        self._send_notify_if_needed(future)
 
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------
