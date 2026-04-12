@@ -70,6 +70,9 @@ These parameters are set in the Domoticz hardware setup UI:
 | **Huisnummer** | House number | *(empty)* |
 | **Huisnummer suffix** | House number addition (e.g. `A`, `bis`) | *(empty)* |
 | **Extra** | Module-specific extra value (see [Module-specific notes](#module-specific-notes)) | *(empty)* |
+| **Enable notification** | Send a push/e-mail notification on pickup days (`True` / `False`) | `False` |
+| **Domoticz IP** | IP address of the Domoticz server for sending notifications (`Address` field) | `127.0.0.1` |
+| **Domoticz Port** | Port of the Domoticz server for sending notifications (`Port` field) | `8080` |
 
 ### config.txt settings
 

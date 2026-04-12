@@ -77,6 +77,8 @@
                 <option label="True" value="true"/>
             </options>
         </param>
+        <param field="Address" label="Domoticz IP" width="150px" required="false" default="127.0.0.1" />
+        <param field="Port" label="Domoticz Port" width="75px" required="false" default="8080" />
     </params>
 </plugin>
 """
@@ -1392,6 +1394,8 @@ class BasePlugin:
         self._label_today = _CONFIG_DEFAULTS['LabelToday']
         self._label_tomorrow = _CONFIG_DEFAULTS['LabelTomorrow']
         self._label_nodata = _CONFIG_DEFAULTS['LabelNoData']
+        self._domoticz_ip = '127.0.0.1'
+        self._domoticz_port = '8080'
 
     def onStart(self):
         Domoticz.Heartbeat(self.HEARTBEAT_SECS)
@@ -1418,6 +1422,9 @@ class BasePlugin:
         self._today_to_min = _parse_hhmm_to_min(cfg.get('TodayTime', '16:00'), 16 * 60)
         self._tomorrow_until_min = _parse_hhmm_to_min(cfg.get('TomorrowTime', '16:00'), 16 * 60)
         self._notify_enabled = Parameters.get('Mode6', 'false').strip().lower() == 'true'
+        self._domoticz_ip = Parameters.get('Address', '127.0.0.1').strip() or '127.0.0.1'
+        _raw_port = Parameters.get('Port', '8080').strip()
+        self._domoticz_port = _raw_port if (_raw_port.isdigit() and 1 <= int(_raw_port) <= 65535) else '8080'
         self._notify_time_min = _parse_hhmm_to_min(cfg.get('NotifyTime', '07:00'), 7 * 60)
         try:
             self._notify_level = max(-2, min(2, int(cfg.get('NotifyLevel', '1') or '1')))
@@ -1612,15 +1619,13 @@ class BasePlugin:
             return
 
         try:
-            _raw_port = Parameters.get('Port', '') or ''
-            port = _raw_port if (_raw_port.isdigit() and 1 <= int(_raw_port) <= 65535) else '8080'
             qs = urllib.parse.urlencode({
                 'type':    'command',
                 'param':   'sendnotification',
                 'subject': subject,
                 'body':    subject,
             })
-            url = f'http://127.0.0.1:{port}/json.htm?{qs}'
+            url = f'http://{self._domoticz_ip}:{self._domoticz_port}/json.htm?{qs}'
             req = urllib.request.Request(url)  # noqa: S310
             username = Parameters.get('Username', '') or ''
             password = Parameters.get('Password', '') or ''
