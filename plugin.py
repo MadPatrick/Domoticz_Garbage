@@ -79,6 +79,7 @@ import Domoticz
 import json
 import re
 import os
+import base64
 import html as _html
 import datetime
 import urllib.request
@@ -1597,6 +1598,9 @@ class BasePlugin:
 
         try:
             port = Parameters.get('Port', '8080') or '8080'
+            if not port.isdigit() or not (1 <= int(port) <= 65535):
+                Domoticz.Error(f'[GC] Notificatie versturen mislukt: ongeldig poortnummer: {port!r}')
+                return
             qs = urllib.parse.urlencode({
                 'type':     'command',
                 'param':    'sendnotification',
@@ -1605,15 +1609,26 @@ class BasePlugin:
                 'priority': str(self._notify_level),
             })
             url = f'http://127.0.0.1:{port}/json.htm?{qs}'
-            with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310
-                result = json.loads(resp.read())
+            req = urllib.request.Request(url)  # noqa: S310
+            username = Parameters.get('Username', '') or ''
+            password = Parameters.get('Password', '') or ''
+            if username:
+                credentials = base64.b64encode(f'{username}:{password}'.encode()).decode()
+                req.add_header('Authorization', f'Basic {credentials}')
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                raw = resp.read()
+            try:
+                result = json.loads(raw)
+            except json.JSONDecodeError:
+                Domoticz.Error(f'[GC] Notificatie versturen mislukt: onverwacht antwoord van Domoticz: {raw[:200]!r}')
+                return
             if result.get('status') != 'OK':
                 Domoticz.Error(f'[GC] Notificatie geweigerd door Domoticz: {result}')
                 return
             self._notify_sent_date = today
             Domoticz.Log(f'[GC] Notificatie verstuurd: {subject}')
         except Exception as exc:
-            Domoticz.Error(f'[GC] Notificatie versturen mislukt: {exc}')
+            Domoticz.Error(f'[GC] Notificatie versturen mislukt: {type(exc).__name__}: {exc}')
 
     def _update_notify_devices(self, future: List[Dict]) -> None:
         now = datetime.datetime.now()
