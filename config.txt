@@ -1,15 +1,15 @@
-# GarbageCalendar - configuratiebestand
-# Pas de waarden hieronder aan naar wens en sla op.
-# De plugin leest dit bestand bij elke herstart.
+# GarbageCalendar - configuration file
+# Adjust the values ​​below as desired and save.
+# The plugin reads this file at every restart.
 
-# Tijdstip waarop de kalender dagelijks ververst wordt (formaat HH:MM)
+# Time at which the calendar is refreshed daily (format HH:MM)
 UpdateTime = 02:30
 
-# Aantal ophaaldata dat getoond wordt in het Domoticz tekst-device
+# Number of fetch dates displayed on the Domoticz text device
 ShowEvents = 3
 
-# Melding "Vandaag <soort>" wordt getoond zolang de huidige tijd voor dit tijdstip ligt (HH:MM)
-VandaagTot = 16:00
+# Notification "Today <type>" is displayed as long as the current time is before this time (HH:MM)
+TodayTime = 16:00
 
-# Melding "Morgen <soort>" wordt getoond zodra de huidige tijd dit tijdstip bereikt (HH:MM)
-MorgenVanaf = 16:00
+# Notification "Tomorrow <type>" will be displayed as soon as the current time reaches this time (HH:MM)
+TomorrowTime = 16:00

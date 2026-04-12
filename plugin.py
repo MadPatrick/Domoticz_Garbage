@@ -33,20 +33,20 @@
     externallink="https://github.com/MadPatrick/Domoticz_Garbage">
     <description>
         <h2>Garbage Calendar</h2><br/>
-        Haalt uw afvalkalender op en toont de komende ophaaldata in een Domoticz tekst-device.<br/><br/>
-        <b>Module keuze (Mode1):</b> kies de module die past bij uw gemeente.<br/>
-        <b>Extra veld (Mode5)</b> is module-afhankelijk:<br/>
-        - opzet / opzet_api: hostname (bijv. inzamelkalender.hvcgroep.nl)<br/>
-        - ximmio: Companycode (open uw gemeente-website, druk F12, zoek in controller.js naar companyCode)<br/>
-        - recycleapp-be: straatnaam<br/>
+        Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.<br/><br/>
+        <b>Module selection (Mode1):</b> choose the module that matches your municipality.<br/>
+        <b>Extra field (Mode5)</b> depends on the module:<br/>
+        - opzet / opzet_api: hostname (e.g. inzamelkalender.hvcgroep.nl)<br/>
+        - ximmio: Company code (open your municipality website, press F12, search in controller.js for companyCode)<br/>
+        - recycleapp-be: street name<br/>
         - burgerportaal: BPName (assen / bar / rmn)<br/>
-        - csv_file: volledig pad naar het CSV-bestand<br/>
-        - afvalinfo: gemeentenaam (bijv. sliedrecht, papendrecht)<br/>
-        - mijnafvalwijzer / mijnafvalwijzer_api: optionele hostname override<br/>
-        - overige modules: leeg laten<br/>
+        - csv_file: full path to the CSV file<br/>
+        - afvalinfo: municipality name (e.g. sliedrecht, papendrecht)<br/>
+        - mijnafvalwijzer / mijnafvalwijzer_api: optional hostname override<br/>
+        - other modules: leave empty<br/>
     </description>
     <params>
-        <param field="Mode1" label="Module" width="280px" required="true" default="2">
+        <param field="Mode1" label="Provider" width="280px" required="true" default="2">
             <options>
                 <option label="1 - mijnafvalwijzer (HTML)" value="1" />
                 <option label="2 - mijnafvalwijzer_api" value="2" default="true" />
@@ -67,10 +67,10 @@
                 <option label="17 - reinis (NL)" value="17" />
             </options>
         </param>
-        <param field="Mode2" label="Postcode" width="100px" required="false" default="" />
-        <param field="Mode3" label="Huisnummer" width="75px" required="false" default="" />
-        <param field="Mode4" label="Huisnummer suffix" width="75px" required="false" default="" />
-        <param field="Mode5" label="Extra: Hostname / Straat / BPName / Companycode / CSV-pad / Gemeente(afvalinfo)" width="300px" required="false" default="" />
+        <param field="Mode2" label="Zipcode" width="100px" required="false" default="" />
+        <param field="Mode3" label="House number" width="75px" required="false" default="" />
+        <param field="Mode4" label="House number suffix" width="75px" required="false" default="" />
+        <param field="Mode5" label="Extra: Hostname / Street / BPName / Companycode / CSV-pad / City(afvalinfo)" width="300px" required="false" default="" />
     </params>
 </plugin>
 """
@@ -97,13 +97,13 @@ _CONFIG_FILE = os.path.join(_PLUGIN_DIR, 'config.txt')
 _CONFIG_DEFAULTS: Dict[str, str] = {
     'UpdateTime':  '02:30',
     'ShowEvents':  '3',
-    'VandaagTot':  '16:00',
-    'MorgenVanaf': '16:00',
+    'TodayTime':  '16:00',
+    'TomorrowTime': '16:00',
 }
 
 
 def _read_config() -> Dict[str, str]:
-    """Lees config.txt en retourneer key=value mapping (met defaults als fallback)."""
+    """Read config.txt and return key=value mapping (with defaults as fallback)."""
     cfg = dict(_CONFIG_DEFAULTS)
     try:
         with open(_CONFIG_FILE, 'r', encoding='utf-8') as fh:
@@ -126,7 +126,7 @@ def _read_config() -> Dict[str, str]:
 
 
 def _parse_hhmm_to_min(val: str, default: int) -> int:
-    """Vertaal 'HH:MM' string naar minuten na middernacht; retourneert *default* bij fouten."""
+    """Translate 'HH:MM' string to minutes past midnight; returns *default* on errors."""
     try:
         h_s, m_s = val.strip().split(':')
         return int(h_s) * 60 + int(m_s)
@@ -1352,8 +1352,8 @@ MODULES: Dict[str, GarbageModule] = {
 # --------------------------------------------------------------------------------------------
 
 class BasePlugin:
-    UNIT_TEXT   = 1  # hoofd Garbage Calendar text-device
-    UNIT_NOTIFY = 2  # "Vandaag/Morgen <soort>" - tijden configureerbaar via config.txt
+    UNIT_TEXT   = 1  # Garbage Calendar text-device
+    UNIT_NOTIFY = 2  # Garbae notification device
     HEARTBEAT_SECS = 30
 
     def __init__(self):
@@ -1366,8 +1366,8 @@ class BasePlugin:
         self._show_events = 3
         self._update_hour = 2
         self._update_min = 30
-        self._vandaag_tot_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['VandaagTot'], 16 * 60)
-        self._morgen_vanaf_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['MorgenVanaf'], 16 * 60)
+        self._today_to_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['TodayTime'], 16 * 60)
+        self._tomorrow_until_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['TomorrowTime'], 16 * 60)
         self._last_fetch_date: Optional[datetime.date] = None
         self._cached_results: List[Dict] = []
         self._fetching = False
@@ -1396,8 +1396,8 @@ class BasePlugin:
         self._update_hour = update_min // 60
         self._update_min = update_min % 60
 
-        self._vandaag_tot_min = _parse_hhmm_to_min(cfg.get('VandaagTot', '16:00'), 16 * 60)
-        self._morgen_vanaf_min = _parse_hhmm_to_min(cfg.get('MorgenVanaf', '16:00'), 16 * 60)
+        self._today_to_min = _parse_hhmm_to_min(cfg.get('TodayTime', '16:00'), 16 * 60)
+        self._tomorrow_until_min = _parse_hhmm_to_min(cfg.get('TomorrowTime', '16:00'), 16 * 60)
 
         try:
             if "Garbage" not in Images:
@@ -1419,8 +1419,8 @@ class BasePlugin:
             f'postcode: {self._zipcode} | huisnr: {self._housenr}{self._housenrsuf} | '
             f'refresh at: {self._update_hour:02d}:{self._update_min:02d} | '
             f'events: {self._show_events} | '
-            f'vandaag tot: {self._vandaag_tot_min // 60:02d}:{self._vandaag_tot_min % 60:02d} | '
-            f'morgen vanaf: {self._morgen_vanaf_min // 60:02d}:{self._morgen_vanaf_min % 60:02d}'
+            f'vandaag tot: {self._today_to_min // 60:02d}:{self._today_to_min % 60:02d} | '
+            f'morgen vanaf: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d}'
         )
 
         if self.UNIT_TEXT not in Devices:
@@ -1495,15 +1495,6 @@ class BasePlugin:
                 self._fetching = False
 
     def _update_device(self):
-        """Update the Domoticz text device with the next N upcoming events.
-
-        Layout per regel:
-            [cal]  <datum vaste breedte>    <icon> <gekleurde naam>
-
-        De datumkolom krijgt een vaste breedte via display:inline-block zodat
-        de icon+naam op elke regel op dezelfde horizontale positie begint.
-        Regels worden gescheiden door <br>  betrouwbaarder in Domoticz dan <table>.
-        """
         today = datetime.date.today()
 
         with self._lock:
@@ -1529,7 +1520,7 @@ class BasePlugin:
                 display_type = apply_type_alias(r['type'])
                 icon_url = r.get('icon_url', '')
 
-                # Datum in vaste breedte zodat de tweede kolom uitlijnt op elke regel
+                # Fixed-width date so that the second column aligns to every line
                 date_cell = (
                     "&#128197;&nbsp;"
                     "<span style='display:inline-block;min-width:95px;"
@@ -1562,13 +1553,6 @@ class BasePlugin:
             Devices[self.UNIT_TEXT].Update(nValue=0, sValue=text)
 
     def _update_notify_devices(self, future: List[Dict]) -> None:
-        """Update meldingsdevice op basis van ophaaldag en tijd.
-
-        UNIT_NOTIFY (Melding):
-          - Ophaal vandaag, voor 14:00  -> "<span style='color:white;'>Vandaag</span> <soort>"
-          - Ophaal morgen, vanaf 16:00  -> "<span style='color:white;'>Morgen</span> <soort>"
-          - Anders                      -> leeg
-        """
         now = datetime.datetime.now()
         today = now.date()
         tomorrow = today + datetime.timedelta(days=1)
@@ -1581,10 +1565,10 @@ class BasePlugin:
             display_type = apply_type_alias(first['type'])
 
             if first['date'] == today:
-                if current_minutes < self._vandaag_tot_min:
+                if current_minutes < self._today_to_min:
                     notify_text = f"Vandaag {display_type}"
             elif first['date'] == tomorrow:
-                if current_minutes >= self._morgen_vanaf_min:
+                if current_minutes >= self._tomorrow_until_min:
                     notify_text = f"<span style='color:white;'>Morgen</span> {display_type}"
 
         if self.UNIT_NOTIFY not in Devices:
