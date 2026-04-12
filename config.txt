@@ -8,17 +8,26 @@ UpdateTime = 02:30
 # Number of fetch dates displayed on the Domoticz text device
 ShowEvents = 3
 
-# Notification "Today <type>" is displayed as long as the current time is before this time (HH:MM)
+# "Today <type>" is displayed as long as the current time is before this time (HH:MM)
 TodayTime = 16:00
 
-# Notification "Tomorrow <type>" will be displayed as soon as the current time reaches this time (HH:MM)
+# "Tomorrow <type>" will be displayed as soon as the current time reaches this time (HH:MM)
 TomorrowTime = 16:00
 
-# Enable notification (e-mail / push) for upcoming pickup days (true / false)
-NotifyEnabled = false
+# Note: enabling/disabling notifications is now done via the plugin's "Enable notification"
+# dropdown in the Domoticz hardware configuration panel (Mode6).
 
 # Time at which the notification is sent on the pickup day (or the day before) (HH:MM)
 NotifyTime = 07:00
 
 # Priority level of the notification (-2=very low, -1=low, 0=normal, 1=high, 2=emergency)
 NotifyLevel = 1
+
+# Label shown when the pickup is today (default: Today)
+LabelToday = Today
+
+# Label shown when the pickup is tomorrow (default: Tomorrow)
+LabelTomorrow = Tomorrow
+
+# Text shown when no upcoming pickup data is available (default: No collection data available)
+LabelNoData = No collection data available

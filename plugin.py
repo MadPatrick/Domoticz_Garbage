@@ -71,6 +71,12 @@
         <param field="Mode3" label="House number" width="75px" required="false" default="" />
         <param field="Mode4" label="House number suffix" width="75px" required="false" default="" />
         <param field="Mode5" label="Extra: Hostname / Street / BPName / Companycode / CSV-pad / City(afvalinfo)" width="300px" required="false" default="" />
+        <param field="Mode6" label="Enable notification" width="100px">
+            <options>
+                <option label="False" value="false" default="true"/>
+                <option label="True" value="true"/>
+            </options>
+        </param>
     </params>
 </plugin>
 """
@@ -100,9 +106,11 @@ _CONFIG_DEFAULTS: Dict[str, str] = {
     'ShowEvents':    '3',
     'TodayTime':     '16:00',
     'TomorrowTime':  '16:00',
-    'NotifyEnabled': 'false',
     'NotifyTime':    '07:00',
     'NotifyLevel':   '1',
+    'LabelToday':    'Today',
+    'LabelTomorrow': 'Tomorrow',
+    'LabelNoData':   'No collection data available',
 }
 
 
@@ -1381,6 +1389,9 @@ class BasePlugin:
         self._fetching = False
         self._lock = threading.Lock()
         self.imageID = -1
+        self._label_today = _CONFIG_DEFAULTS['LabelToday']
+        self._label_tomorrow = _CONFIG_DEFAULTS['LabelTomorrow']
+        self._label_nodata = _CONFIG_DEFAULTS['LabelNoData']
 
     def onStart(self):
         Domoticz.Heartbeat(self.HEARTBEAT_SECS)
@@ -1406,12 +1417,16 @@ class BasePlugin:
 
         self._today_to_min = _parse_hhmm_to_min(cfg.get('TodayTime', '16:00'), 16 * 60)
         self._tomorrow_until_min = _parse_hhmm_to_min(cfg.get('TomorrowTime', '16:00'), 16 * 60)
-        self._notify_enabled = cfg.get('NotifyEnabled', 'false').strip().lower() in ('true', '1', 'yes')
+        self._notify_enabled = Parameters.get('Mode6', 'false').strip().lower() == 'true'
         self._notify_time_min = _parse_hhmm_to_min(cfg.get('NotifyTime', '07:00'), 7 * 60)
         try:
             self._notify_level = max(-2, min(2, int(cfg.get('NotifyLevel', '1') or '1')))
         except ValueError:
             self._notify_level = 1
+
+        self._label_today = cfg.get('LabelToday', _CONFIG_DEFAULTS['LabelToday']).strip() or _CONFIG_DEFAULTS['LabelToday']
+        self._label_tomorrow = cfg.get('LabelTomorrow', _CONFIG_DEFAULTS['LabelTomorrow']).strip() or _CONFIG_DEFAULTS['LabelTomorrow']
+        self._label_nodata = cfg.get('LabelNoData', _CONFIG_DEFAULTS['LabelNoData']).strip() or _CONFIG_DEFAULTS['LabelNoData']
 
         try:
             if "Garbage" not in Images:
@@ -1522,15 +1537,15 @@ class BasePlugin:
         future = future[:self._show_events]
 
         if not future:
-            text = 'Geen ophaaldata beschikbaar'
+            text = self._label_nodata
         else:
             lines = []
             tomorrow = today + datetime.timedelta(days=1)
             for r in future:
                 if r['date'] == today:
-                    date_str = 'Vandaag'
+                    date_str = self._label_today
                 elif r['date'] == tomorrow:
-                    date_str = 'Morgen'
+                    date_str = self._label_tomorrow
                 else:
                     date_str = format_date(r['date'], self._date_fmt)
                 display_type = apply_type_alias(r['type'])
@@ -1590,9 +1605,9 @@ class BasePlugin:
         display_type = apply_type_alias(first['type'])
 
         if first['date'] == today:
-            subject = f'Vandaag: {display_type}'
+            subject = f'{self._label_today}: {display_type}'
         elif first['date'] == tomorrow:
-            subject = f'Morgen: {display_type}'
+            subject = f'{self._label_tomorrow}: {display_type}'
         else:
             return
 
@@ -1644,10 +1659,10 @@ class BasePlugin:
 
             if first['date'] == today:
                 if current_minutes < self._today_to_min:
-                    notify_text = f"{ICON} <span style='color:white;'>Vandaag : </span> {display_type}"
+                    notify_text = f"{ICON} <span style='color:white;'>{self._label_today} : </span> {display_type}"
             elif first['date'] == tomorrow:
                 if current_minutes >= self._tomorrow_until_min:
-                    notify_text = f"{ICON} <span style='color:white;'>Morgen : </span> {display_type}"
+                    notify_text = f"{ICON} <span style='color:white;'>{self._label_tomorrow} : </span> {display_type}"
 
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
