@@ -82,7 +82,9 @@ The plugin re-reads this file on every restart (no Domoticz restart required —
 | `ShowEvents` | Number of upcoming pickups to display | `3` |
 | `VandaagTot` | Until what time the "Vandaag" notification is shown (HH:MM) | `16:00` |
 | `MorgenVanaf` | From what time the "Morgen" notification is shown (HH:MM) | `16:00` |
-
+| `NotifyEnabled` | Send a notification (e-mail / push) on pickup days (`true` / `false`) | `false` |
+| `NotifyTime` | Time at which the notification is sent on the pickup day or the day before (HH:MM) | `07:00` |
+| `NotifyLevel` | Priority of the notification (`-2`=very low … `2`=emergency) | `1` |
 Pickup dates are always displayed in the format **`wd dd mmm`** (e.g. `ma 07 apr`).
 
 ### Module-specific notes
@@ -150,12 +152,23 @@ The plugin automatically creates a second Text device called **"Garbage Containe
 
 | Situation | Text shown |
 |---|---|
-| Collection day, before `VandaagTot` | `Vandaag <soort>` |
-| Day before collection, from `MorgenVanaf` | `Morgen <soort>` |
+| Collection day, before `VandaagTot` | `Vandaag <soort>` (e.g. `Vandaag Restafval`) |
+| Day before collection, from `MorgenVanaf` | `Morgen <soort>` (e.g. `Morgen PMD`) |
 | Outside these windows | *(empty)* |
 
 The reminder times can be adjusted in `config.txt` (see [config.txt settings](#configtxt-settings)).  
 No additional scripts or dzVents rules are needed — the plugin updates both devices automatically.
+
+### E-mail / push notifications
+
+By setting `NotifyEnabled = true` in `config.txt` the plugin will also send a notification via **all configured Domoticz notification channels** (e-mail, Pushover, Telegram, etc.) at the time specified by `NotifyTime`:
+
+| Situation | Notification sent |
+|---|---|
+| Collection day, at or after `NotifyTime` | `Vandaag: <soort>` (e.g. `Vandaag: Restafval`) |
+| Day before collection, at or after `NotifyTime` | `Morgen: <soort>` (e.g. `Morgen: PMD`) |
+
+The notification is sent only once per day. To use e-mail notifications, configure your e-mail settings in Domoticz under **Setup → Settings → Notifications**.
 
 ---
 
@@ -168,3 +181,4 @@ No additional scripts or dzVents rules are needed — the plugin updates both de
 | Module 9 (omrin) fails to import | Install the `cryptography` package: `pip install cryptography`. |
 | ximmio returns no data | Find the correct `companyCode` for your municipality (see [Module-specific notes](#module-specific-notes)). |
 | "Garbage Container" device not updating | Check `VandaagTot` and `MorgenVanaf` in `config.txt`; restart the plugin after saving. |
+| No e-mail / push notification received | Verify `NotifyEnabled = true` and `NotifyTime` in `config.txt`. Also check that notification channels (e-mail, Pushover, etc.) are configured under **Setup → Settings → Notifications** in Domoticz. |

@@ -13,3 +13,12 @@ TodayTime = 16:00
 
 # Notification "Tomorrow <type>" will be displayed as soon as the current time reaches this time (HH:MM)
 TomorrowTime = 16:00
+
+# Enable notification (e-mail / push) for upcoming pickup days (true / false)
+NotifyEnabled = false
+
+# Time at which the notification is sent on the pickup day (or the day before) (HH:MM)
+NotifyTime = 07:00
+
+# Priority level of the notification (-2=very low, -1=low, 0=normal, 1=high, 2=emergency)
+NotifyLevel = 1

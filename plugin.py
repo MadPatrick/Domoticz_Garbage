@@ -95,10 +95,13 @@ _PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 _CONFIG_FILE = os.path.join(_PLUGIN_DIR, 'config.txt')
 
 _CONFIG_DEFAULTS: Dict[str, str] = {
-    'UpdateTime':  '02:30',
-    'ShowEvents':  '3',
-    'TodayTime':  '16:00',
-    'TomorrowTime': '16:00',
+    'UpdateTime':    '02:30',
+    'ShowEvents':    '3',
+    'TodayTime':     '16:00',
+    'TomorrowTime':  '16:00',
+    'NotifyEnabled': 'false',
+    'NotifyTime':    '07:00',
+    'NotifyLevel':   '1',
 }
 
 
@@ -1368,6 +1371,10 @@ class BasePlugin:
         self._update_min = 30
         self._today_to_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['TodayTime'], 16 * 60)
         self._tomorrow_until_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['TomorrowTime'], 16 * 60)
+        self._notify_enabled = False
+        self._notify_time_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['NotifyTime'], 7 * 60)
+        self._notify_level = 1
+        self._notify_sent_date: Optional[datetime.date] = None
         self._last_fetch_date: Optional[datetime.date] = None
         self._cached_results: List[Dict] = []
         self._fetching = False
@@ -1398,6 +1405,12 @@ class BasePlugin:
 
         self._today_to_min = _parse_hhmm_to_min(cfg.get('TodayTime', '16:00'), 16 * 60)
         self._tomorrow_until_min = _parse_hhmm_to_min(cfg.get('TomorrowTime', '16:00'), 16 * 60)
+        self._notify_enabled = cfg.get('NotifyEnabled', 'false').strip().lower() in ('true', '1', 'yes')
+        self._notify_time_min = _parse_hhmm_to_min(cfg.get('NotifyTime', '07:00'), 7 * 60)
+        try:
+            self._notify_level = max(-2, min(2, int(cfg.get('NotifyLevel', '1') or '1')))
+        except ValueError:
+            self._notify_level = 1
 
         try:
             if "Garbage" not in Images:
@@ -1420,7 +1433,9 @@ class BasePlugin:
             f'refresh at: {self._update_hour:02d}:{self._update_min:02d} | '
             f'events: {self._show_events} | '
             f'vandaag tot: {self._today_to_min // 60:02d}:{self._today_to_min % 60:02d} | '
-            f'morgen vanaf: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d}'
+            f'morgen vanaf: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d} | '
+            f'notificatie: {"aan" if self._notify_enabled else "uit"}'
+            + (f' om {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}' if self._notify_enabled else '')
         )
 
         if self.UNIT_TEXT not in Devices:
@@ -1552,6 +1567,41 @@ class BasePlugin:
         if Devices[self.UNIT_TEXT].sValue != text:
             Devices[self.UNIT_TEXT].Update(nValue=0, sValue=text)
 
+    def _send_notify_if_needed(self, future: List[Dict]) -> None:
+        """Send a Domoticz notification (e-mail / push) at the configured NotifyTime."""
+        if not self._notify_enabled:
+            return
+
+        now = datetime.datetime.now()
+        today = now.date()
+        tomorrow = today + datetime.timedelta(days=1)
+        current_minutes = now.hour * 60 + now.minute
+
+        if current_minutes < self._notify_time_min:
+            return
+        if self._notify_sent_date == today:
+            return
+
+        if not future:
+            return
+
+        first = future[0]
+        display_type = apply_type_alias(first['type'])
+
+        if first['date'] == today:
+            subject = f'Vandaag: {display_type}'
+        elif first['date'] == tomorrow:
+            subject = f'Morgen: {display_type}'
+        else:
+            return
+
+        try:
+            Domoticz.Notify('GarbageCalendar', subject, self._notify_level, '', '', 0)
+            self._notify_sent_date = today
+            Domoticz.Log(f'[GC] Notificatie verstuurd: {subject}')
+        except Exception as exc:
+            Domoticz.Error(f'[GC] Notificatie versturen mislukt: {exc}')
+
     def _update_notify_devices(self, future: List[Dict]) -> None:
         now = datetime.datetime.now()
         today = now.date()
@@ -1575,6 +1625,8 @@ class BasePlugin:
             self._create_notify_device()
         if Devices[self.UNIT_NOTIFY].sValue != notify_text:
             Devices[self.UNIT_NOTIFY].Update(nValue=0, sValue=notify_text)
+
+        self._send_notify_if_needed(future)
 
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------
