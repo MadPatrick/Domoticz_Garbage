@@ -73,8 +73,8 @@
         <param field="Mode5" label="Extra: Hostname / Street / BPName / Companycode / CSV-pad / City(afvalinfo)" width="300px" required="false" default="" />
         <param field="Mode6" label="Enable notification" width="100px">
             <options>
-                <option label="False" value="false" default="true"/>
-                <option label="True" value="true"/>
+                <option label="No" value="false" default="true"/>
+                <option label="Yes" value="true"/>
             </options>
         </param>
         <param field="Address" label="Domoticz IP" width="150px" required="false" default="127.0.0.1" />
