@@ -1597,10 +1597,8 @@ class BasePlugin:
             return
 
         try:
-            port = Parameters.get('Port', '8080') or '8080'
-            if not port.isdigit() or not (1 <= int(port) <= 65535):
-                Domoticz.Error(f'[GC] Notificatie versturen mislukt: ongeldig poortnummer: {port!r}')
-                return
+            _raw_port = Parameters.get('Port', '') or ''
+            port = _raw_port if (_raw_port.isdigit() and 1 <= int(_raw_port) <= 65535) else '8080'
             qs = urllib.parse.urlencode({
                 'type':     'command',
                 'param':    'sendnotification',
