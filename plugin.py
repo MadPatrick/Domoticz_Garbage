@@ -1664,6 +1664,8 @@ class BasePlugin:
                     today_entry = entry
                 elif tomorrow_entry is None and entry['date'] == tomorrow:
                     tomorrow_entry = entry
+                elif entry['date'] > tomorrow:
+                    break
 
                 if today_entry and tomorrow_entry:
                     break
