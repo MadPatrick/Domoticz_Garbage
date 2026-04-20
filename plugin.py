@@ -1656,19 +1656,27 @@ class BasePlugin:
         notify_text = ''
 
         if future:
-            first = future[0]
-            display_type = apply_type_alias(first['type'])
+            today_entry = None
+            tomorrow_entry = None
+
+            for entry in future:
+                if today_entry is None and entry['date'] == today:
+                    today_entry = entry
+                elif tomorrow_entry is None and entry['date'] == tomorrow:
+                    tomorrow_entry = entry
+
+                if today_entry and tomorrow_entry:
+                    break
 
             # Emoji variant
             ICON = "<span style='font-size:1.5em;'>&#x267B;&#xFE0F;</span>"
 
-            if first['date'] == today:
-                if current_minutes < self._today_to_min:
-                    notify_text = f"{ICON} <span style='color:white;'>Vandaag : </span> {display_type}"
-            elif first['date'] == tomorrow:
-                if current_minutes >= self._tomorrow_until_min:
-                    notify_text = f"{ICON} <span style='color:white;'>Morgen : </span> {display_type}"
-
+            if today_entry and current_minutes < self._today_to_min:
+                display_type = apply_type_alias(today_entry['type'])
+                notify_text = f"{ICON} <span style='color:white;'>Vandaag : </span> {display_type}"
+            elif tomorrow_entry and current_minutes >= self._tomorrow_until_min:
+                display_type = apply_type_alias(tomorrow_entry['type'])
+                notify_text = f"{ICON} <span style='color:white;'>Morgen : </span> {display_type}"
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
         if Devices[self.UNIT_NOTIFY].sValue != notify_text:
