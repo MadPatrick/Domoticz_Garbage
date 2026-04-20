@@ -1660,14 +1660,15 @@ class BasePlugin:
             tomorrow_entry = None
 
             for entry in future:
-                if today_entry is None and entry['date'] == today:
-                    today_entry = entry
-                elif tomorrow_entry is None and entry['date'] == tomorrow:
-                    tomorrow_entry = entry
-                elif entry['date'] > tomorrow:
-                    break
+                entry_date = entry['date']
 
-                if today_entry and tomorrow_entry:
+                if entry_date > tomorrow:
+                    break
+                if today_entry is None and entry_date == today:
+                    today_entry = entry
+                    continue
+                if tomorrow_entry is None and entry_date == tomorrow:
+                    tomorrow_entry = entry
                     break
 
             # Emoji variant
