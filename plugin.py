@@ -1463,11 +1463,11 @@ class BasePlugin:
 
         if self.UNIT_TEXT not in Devices:
             self._create_text_device()
-            Domoticz.Log('Text device "Garbage Calendar" created')
+            Domoticz.Log('Text device "Calendar" created')
 
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
-            Domoticz.Log('Text device "Garbage Container" created')
+            Domoticz.Log('Text device "Container" created')
 
         self._trigger_fetch()
 
@@ -1496,12 +1496,12 @@ class BasePlugin:
 
     def _create_text_device(self):
         image_kwarg = {'Image': self.imageID} if self.imageID >= 0 else {}
-        Domoticz.Device(Name='Garbage Calendar', Unit=self.UNIT_TEXT,
+        Domoticz.Device(Name='Calendar', Unit=self.UNIT_TEXT,
                         TypeName='Text', Used=1, **image_kwarg).Create()
 
     def _create_notify_device(self):
         image_kwarg = {'Image': self.imageID} if self.imageID >= 0 else {}
-        Domoticz.Device(Name='Garbage Container', Unit=self.UNIT_NOTIFY,
+        Domoticz.Device(Name='Container', Unit=self.UNIT_NOTIFY,
                         TypeName='Text', Used=1, **image_kwarg).Create()
 
     def _trigger_fetch(self):
