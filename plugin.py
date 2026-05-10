@@ -29,12 +29,11 @@
 
 """
 <plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick/jvanderzande" version="1.0.0"
-    wikilink="https://github.com/MadPatrick/Domoticz_Garbage/wiki"
     externallink="https://github.com/MadPatrick/Domoticz_Garbage">
     <description>
         <h2>Garbage Calendar</h2><br/>
         Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.<br/><br/>
-        <b>Provider:</b> Choose the module that matches your municipality.<br/>
+        <b>Provider: </b> Choose the module that matches your municipality.<br/>
         <b>Extra field </b> depends on the module:<br/>
         - opzet / opzet_api: hostname (e.g. inzamelkalender.hvcgroep.nl)<br/>
         - ximmio: Company code (open your municipality website, press F12, search in controller.js for companyCode)<br/>
