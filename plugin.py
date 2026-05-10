@@ -34,16 +34,19 @@
     <description>
         <h2>Garbage Calendar</h2><br/>
         Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.<br/><br/>
-        <b>Provider:</b> Choose the module that matches your municipality.<br/>
-        <b>Extra field </b> depends on the module:<br/>
-        - opzet / opzet_api: hostname (e.g. inzamelkalender.hvcgroep.nl)<br/>
-        - ximmio: Company code (open your municipality website, press F12, search in controller.js for companyCode)<br/>
-        - recycleapp-be: street name<br/>
-        - burgerportaal: BPName (assen / bar / rmn)<br/>
-        - csv_file: full path to the CSV file<br/>
-        - afvalinfo: municipality name (e.g. sliedrecht, papendrecht)<br/>
-        - mijnafvalwijzer / mijnafvalwijzer_api: optional hostname override<br/>
-        - other modules: leave empty<br/>
+        <b>Provider:</b> Choose the module that matches your municipality.<br/><br/>
+        <b>Extra field</b> depends on the selected module:<br/>
+        <table border="1" cellpadding="4" cellspacing="0">
+            <tr><th>Module</th><th>Extra field value</th></tr>
+            <tr><td>opzet / opzet_api</td><td>hostname (e.g. inzamelkalender.hvcgroep.nl)</td></tr>
+            <tr><td>ximmio</td><td>Company code (open municipality website, press F12, search controller.js for companyCode)</td></tr>
+            <tr><td>recycleapp-be</td><td>street name</td></tr>
+            <tr><td>burgerportaal</td><td>BPName (assen / bar / rmn)</td></tr>
+            <tr><td>csv_file</td><td>full path to the CSV file</td></tr>
+            <tr><td>afvalinfo</td><td>municipality name (e.g. sliedrecht, papendrecht)</td></tr>
+            <tr><td>mijnafvalwijzer / mijnafvalwijzer_api</td><td>optional hostname override</td></tr>
+            <tr><td>other modules</td><td>leave empty</td></tr>
+        </table>
     </description>
     <params>
         <param field="Mode1" label="Provider" width="280px" required="true" default="2">
