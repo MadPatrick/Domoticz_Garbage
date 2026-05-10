@@ -29,7 +29,6 @@
 
 """
 <plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick/jvanderzande" version="1.0.0"
-    wikilink="https://github.com/MadPatrick/Domoticz_Garbage/wiki"
     externallink="https://github.com/MadPatrick/Domoticz_Garbage">
     <description>
         <h2>Garbage Calendar</h2>
