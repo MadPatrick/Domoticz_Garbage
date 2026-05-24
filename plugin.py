@@ -233,17 +233,35 @@ TYPE_ALIASES = [
     ('kerstbomen', 'Kerstbomen'),
 ]
 
-# Maps canonical display names to HTML entity icon + coloured label.
-# Uses HTML entities + inline style so Domoticz Text devices render them correctly,
-# just like other Domoticz plugins that use styled HTML in sValue.
-WASTE_ICONS: Dict[str, str] = {
-    'GFT':        "<span style='color:#4caf50;'>GFT</span>",
-    'Papier':     "<span style='color:#2196f3;'>Papier</span>",
-    'Restafval':  "<span style='color:#607d8b;'>Restafval</span>",
-    'PMD':        "<span style='color:#ff9800;'>PMD</span>",
-    'Glas':       "<span style='color:#00bcd4;'>Glas</span>",
-    'Textiel':    "<span style='color:#9c27b0;'>Textiel</span>",
-    'Kerstbomen': "<span style='color:#388e3c;'>Kerst</span>",
+WASTE_TYPE_LABELS: Dict[str, Dict[str, str]] = {
+    'EN': {
+        'GFT': 'Organic',
+        'Papier': 'Paper',
+        'Restafval': 'Residual waste',
+        'PMD': 'PMD',
+        'Glas': 'Glass',
+        'Textiel': 'Textile',
+        'Kerstbomen': 'Christmas trees',
+    },
+    'NL': {
+        'GFT': 'GFT',
+        'Papier': 'Papier',
+        'Restafval': 'Restafval',
+        'PMD': 'PMD',
+        'Glas': 'Glas',
+        'Textiel': 'Textiel',
+        'Kerstbomen': 'Kerst',
+    },
+}
+
+WASTE_TYPE_COLORS: Dict[str, str] = {
+    'GFT': '#4caf50',
+    'Papier': '#2196f3',
+    'Restafval': '#607d8b',
+    'PMD': '#ff9800',
+    'Glas': '#00bcd4',
+    'Textiel': '#9c27b0',
+    'Kerstbomen': '#388e3c',
 }
 
 
@@ -253,6 +271,21 @@ def apply_type_alias(gtype: str) -> str:
         if key in lower:
             return alias
     return gtype
+
+
+def localize_waste_type(gtype: str, lang: str = 'EN') -> str:
+    canonical_type = apply_type_alias(gtype)
+    lang_key = 'NL' if (lang or '').upper() == 'NL' else 'EN'
+    return WASTE_TYPE_LABELS.get(lang_key, {}).get(canonical_type, canonical_type)
+
+
+def format_waste_type_html(gtype: str, lang: str = 'EN') -> str:
+    canonical_type = apply_type_alias(gtype)
+    display_label = _html.escape(localize_waste_type(gtype, lang))
+    color = WASTE_TYPE_COLORS.get(canonical_type)
+    if color:
+        return f"<span style='color:{color};'>{display_label}</span>"
+    return f"<span style='color:#999;'>{display_label}</span>"
 
 
 INPUT_MONTHS: Dict[str, int] = {
@@ -1643,7 +1676,7 @@ class BasePlugin:
                     date_str = self._label_tomorrow
                 else:
                     date_str = format_date(r['date'], self._date_fmt, self._lang)
-                display_type = apply_type_alias(r['type'])
+                display_type = localize_waste_type(r['type'], self._lang)
                 icon_url = r.get('icon_url', '')
 
                 # Fixed-width date so that the second column aligns to every line
@@ -1660,13 +1693,10 @@ class BasePlugin:
                     icon_cell = (
                         f'<img src="{safe_url}" '
                         f'style="height:12px;vertical-align:middle;margin-right:4px;">'
-                        f"{display_type}"
+                        f"{_html.escape(display_type)}"
                     )
                 else:
-                    icon_cell = WASTE_ICONS.get(
-                        display_type,
-                        f"<span style='color:#999;'>{display_type}</span>"
-                    )
+                    icon_cell = format_waste_type_html(r['type'], self._lang)
 
                 lines.append(f"{date_cell}{icon_cell}")
 
@@ -1697,7 +1727,7 @@ class BasePlugin:
             return
 
         first = future[0]
-        display_type = apply_type_alias(first['type'])
+        display_type = localize_waste_type(first['type'], self._lang)
 
         if first['date'] == today:
             subject = f'{self._label_today}: {display_type}'
@@ -1751,10 +1781,10 @@ class BasePlugin:
             ICON = "<span style='font-size:1.5em;'>&#x267B;&#xFE0F;</span>"
 
             if today_entry and current_minutes < self._today_to_min:
-                display_type = apply_type_alias(today_entry['type'])
+                display_type = format_waste_type_html(today_entry['type'], self._lang)
                 notify_text = f"{ICON} <span style='color:white;'>{self._label_today} : </span> {display_type}"
             elif tomorrow_entry and current_minutes >= self._tomorrow_until_min:
-                display_type = apply_type_alias(tomorrow_entry['type'])
+                display_type = format_waste_type_html(tomorrow_entry['type'], self._lang)
                 notify_text = f"{ICON} <span style='color:white;'>{self._label_tomorrow} : </span> {display_type}"
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()

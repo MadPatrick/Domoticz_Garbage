@@ -71,7 +71,7 @@ These parameters are set in the Domoticz hardware setup UI:
 | **Huisnummer suffix** | House number addition (e.g. `A`, `bis`) | *(empty)* |
 | **Extra** | Module-specific extra value (see [Module-specific notes](#module-specific-notes)) | *(empty)* |
 | **Enable notification** | Send a push/e-mail notification on pickup days (`True` / `False`) | `False` |
-| **Language** | Display language selector via `SerialPort` for labels, device reminders, date names, and plugin logs (`EN` / `NL`) | `EN` |
+| **Language** | Display language selector via `SerialPort` for labels, waste-type names, device reminders, date names, and plugin logs (`EN` / `NL`) | `EN` |
 | **Domoticz IP** | IP address of the Domoticz server for sending notifications (`Address` field) | `127.0.0.1` |
 | **Domoticz Port** | Port of the Domoticz server for sending notifications (`Port` field) | `8080` |
 
@@ -140,7 +140,7 @@ Pickup dates are always displayed in the format **`wd dd mmm`** (e.g. `ma 07 apr
 
 ## Waste types
 
-The plugin normalises raw waste type names from the provider into standard display names and renders them with a colour-coded HTML label in the Domoticz Text device:
+The plugin normalises raw waste type names from the provider into standard display names and renders them with a colour-coded HTML label in the Domoticz Text device. The **Language** setting controls whether those labels are shown in English or Dutch:
 
 | Display name | Colour | Includes |
 |---|---|---|
