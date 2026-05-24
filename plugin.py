@@ -109,6 +109,12 @@
                 <option label="Yes" value="true"/>
             </options>
         </param>
+        <param field="SerialPort" label="Language" width="75px">
+            <options>
+                <option label="EN" value="EN" default="true"/>
+                <option label="NL" value="NL"/>
+            </options>
+        </param>
         <param field="Address" label="Domoticz IP" width="150px" required="false" default="127.0.0.1" />
         <param field="Port" label="Domoticz Port" width="75px" required="false" default="8080" />
     </params>
@@ -145,6 +151,12 @@ _CONFIG_DEFAULTS: Dict[str, str] = {
     'LabelToday':    'Today',
     'LabelTomorrow': 'Tomorrow',
     'LabelNoData':   'No collection data available',
+}
+
+_NL_DEFAULTS: Dict[str, str] = {
+    'LabelToday':    'Vandaag',
+    'LabelTomorrow': 'Morgen',
+    'LabelNoData':   'Geen verzamelgegevens beschikbaar',
 }
 
 
@@ -1463,9 +1475,11 @@ class BasePlugin:
         except ValueError:
             self._notify_level = 1
 
-        self._label_today = cfg.get('LabelToday', _CONFIG_DEFAULTS['LabelToday']).strip() or _CONFIG_DEFAULTS['LabelToday']
-        self._label_tomorrow = cfg.get('LabelTomorrow', _CONFIG_DEFAULTS['LabelTomorrow']).strip() or _CONFIG_DEFAULTS['LabelTomorrow']
-        self._label_nodata = cfg.get('LabelNoData', _CONFIG_DEFAULTS['LabelNoData']).strip() or _CONFIG_DEFAULTS['LabelNoData']
+        _lang = Parameters.get('SerialPort', 'EN').strip().upper()
+        _label_defaults = _NL_DEFAULTS if _lang == 'NL' else _CONFIG_DEFAULTS
+        self._label_today = cfg.get('LabelToday', _label_defaults['LabelToday']).strip() or _label_defaults['LabelToday']
+        self._label_tomorrow = cfg.get('LabelTomorrow', _label_defaults['LabelTomorrow']).strip() or _label_defaults['LabelTomorrow']
+        self._label_nodata = cfg.get('LabelNoData', _label_defaults['LabelNoData']).strip() or _label_defaults['LabelNoData']
 
         try:
             if "Garbage" not in Images:
