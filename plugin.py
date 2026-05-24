@@ -109,10 +109,10 @@
                 <option label="Yes" value="true"/>
             </options>
         </param>
-        <param field="SerialPort" label="Language / Taal" width="120px">
+        <param field="SerialPort" label="Language" width="75px">
             <options>
-                <option label="Nederlands (NL)" value="NL" default="true"/>
-                <option label="English (EN)" value="EN"/>
+                <option label="EN" value="EN" default="true"/>
+                <option label="NL" value="NL"/>
             </options>
         </param>
         <param field="Address" label="Domoticz IP" width="150px" required="false" default="127.0.0.1" />
@@ -153,10 +153,16 @@ _CONFIG_DEFAULTS: Dict[str, str] = {
     'LabelNoData':   'No collection data available',
 }
 
+_NL_DEFAULTS: Dict[str, str] = {
+    'LabelToday':    'Vandaag',
+    'LabelTomorrow': 'Morgen',
+    'LabelNoData':   'Geen verzamelgegevens beschikbaar',
+}
+
 
 def _read_config() -> Dict[str, str]:
-    """Read config.txt and return key=value mapping (only explicit entries from the file)."""
-    cfg: Dict[str, str] = {}
+    """Read config.txt and return key=value mapping (with defaults as fallback)."""
+    cfg = dict(_CONFIG_DEFAULTS)
     try:
         with open(_CONFIG_FILE, 'r', encoding='utf-8') as fh:
             for line in fh:
@@ -195,24 +201,6 @@ DUTCH_WEEKDAYS_LONG = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag',
 DUTCH_MONTHS_SHORT = ['', 'jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']
 DUTCH_MONTHS_LONG = ['', 'januari', 'februari', 'maart', 'april', 'mei', 'juni',
                      'juli', 'augustus', 'september', 'oktober', 'november', 'december']
-
-ENGLISH_WEEKDAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-ENGLISH_WEEKDAYS_LONG = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-ENGLISH_MONTHS_SHORT = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-ENGLISH_MONTHS_LONG = ['', 'January', 'February', 'March', 'April', 'May', 'June',
-                       'July', 'August', 'September', 'October', 'November', 'December']
-
-# Language-specific label defaults
-LABELS_NL: Dict[str, str] = {
-    'LabelToday':    'Vandaag',
-    'LabelTomorrow': 'Morgen',
-    'LabelNoData':   'Geen verzamelgegevens beschikbaar',
-}
-LABELS_EN: Dict[str, str] = {
-    'LabelToday':    'Today',
-    'LabelTomorrow': 'Tomorrow',
-    'LabelNoData':   'No collection data available',
-}
 
 # --------------------------------------------------------------------------------------------
 # Waste type aliases
@@ -261,22 +249,12 @@ INPUT_MONTHS: Dict[str, int] = {
 }
 
 
-def format_date(d: datetime.date, fmt: str, lang: str = 'NL') -> str:
-    if lang == 'EN':
-        weekdays_short = ENGLISH_WEEKDAYS_SHORT
-        weekdays_long  = ENGLISH_WEEKDAYS_LONG
-        months_short   = ENGLISH_MONTHS_SHORT
-        months_long    = ENGLISH_MONTHS_LONG
-    else:
-        weekdays_short = DUTCH_WEEKDAYS_SHORT
-        weekdays_long  = DUTCH_WEEKDAYS_LONG
-        months_short   = DUTCH_MONTHS_SHORT
-        months_long    = DUTCH_MONTHS_LONG
+def format_date(d: datetime.date, fmt: str) -> str:
     result = fmt
-    result = result.replace('wdd', weekdays_long[d.weekday()])
-    result = result.replace('wd', weekdays_short[d.weekday()])
-    result = result.replace('mmmm', months_long[d.month])
-    result = result.replace('mmm', months_short[d.month])
+    result = result.replace('wdd', DUTCH_WEEKDAYS_LONG[d.weekday()])
+    result = result.replace('wd', DUTCH_WEEKDAYS_SHORT[d.weekday()])
+    result = result.replace('mmmm', DUTCH_MONTHS_LONG[d.month])
+    result = result.replace('mmm', DUTCH_MONTHS_SHORT[d.month])
     result = result.replace('mm', f'{d.month:02d}')
     result = result.replace('dd', f'{d.day:02d}')
     result = result.replace('yyyy', str(d.year))
@@ -518,7 +496,7 @@ class MijnAfvalwijzerApiModule(GarbageModule):
 
 class XimmioModule(GarbageModule):
     name = 'Ximmio'
-    _HOSTS = ['https://wasteprod2api.ximmio.com', 'https://wasteapi.2go-mobile.com']
+    _HOSTS = ['https://wasteapi.ximmio.com'] #, 'https://wasteapi.2go-mobile.com']
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         companycode = extra.strip()
@@ -1460,7 +1438,6 @@ class BasePlugin:
         self._label_today = _CONFIG_DEFAULTS['LabelToday']
         self._label_tomorrow = _CONFIG_DEFAULTS['LabelTomorrow']
         self._label_nodata = _CONFIG_DEFAULTS['LabelNoData']
-        self._language = 'NL'
         self._domoticz_ip = '127.0.0.1'
         self._domoticz_port = '8080'
 
@@ -1473,11 +1450,6 @@ class BasePlugin:
         self._housenrsuf = Parameters.get('Mode4', '').strip()
         self._extra = Parameters.get('Mode5', '').strip()
         self._date_fmt = 'wd dd mmm'
-
-        # Language selector (SerialPort field): 'NL' = Nederlands, 'EN' = English
-        lang_raw = Parameters.get('SerialPort', 'NL').strip().upper()
-        self._language = lang_raw if lang_raw in ('EN', 'NL') else 'NL'
-        lang_defaults = LABELS_EN if self._language == 'EN' else LABELS_NL
 
         cfg = _read_config()
 
@@ -1503,10 +1475,11 @@ class BasePlugin:
         except ValueError:
             self._notify_level = 1
 
-        # Labels: config.txt overrides language defaults
-        self._label_today = cfg.get('LabelToday', lang_defaults['LabelToday']).strip() or lang_defaults['LabelToday']
-        self._label_tomorrow = cfg.get('LabelTomorrow', lang_defaults['LabelTomorrow']).strip() or lang_defaults['LabelTomorrow']
-        self._label_nodata = cfg.get('LabelNoData', lang_defaults['LabelNoData']).strip() or lang_defaults['LabelNoData']
+        _lang = Parameters.get('SerialPort', 'EN').strip().upper()
+        _label_defaults = _NL_DEFAULTS if _lang == 'NL' else _CONFIG_DEFAULTS
+        self._label_today = cfg.get('LabelToday', _label_defaults['LabelToday']).strip() or _label_defaults['LabelToday']
+        self._label_tomorrow = cfg.get('LabelTomorrow', _label_defaults['LabelTomorrow']).strip() or _label_defaults['LabelTomorrow']
+        self._label_nodata = cfg.get('LabelNoData', _label_defaults['LabelNoData']).strip() or _label_defaults['LabelNoData']
 
         try:
             if "Garbage" not in Images:
@@ -1526,7 +1499,6 @@ class BasePlugin:
         Domoticz.Log(
             f'Garbage Calendar started | module: {self._module.name} | '
             f'zipcode: {self._zipcode} | housenr: {self._housenr}{self._housenrsuf} | '
-            f'language: {self._language} | '
             f'refresh at: {self._update_hour:02d}:{self._update_min:02d} | '
             f'events: {self._show_events} | '
             f'today until: {self._today_to_min // 60:02d}:{self._today_to_min % 60:02d} | '
@@ -1628,7 +1600,7 @@ class BasePlugin:
                 elif r['date'] == tomorrow:
                     date_str = self._label_tomorrow
                 else:
-                    date_str = format_date(r['date'], self._date_fmt, self._language)
+                    date_str = format_date(r['date'], self._date_fmt)
                 display_type = apply_type_alias(r['type'])
                 icon_url = r.get('icon_url', '')
 
@@ -1711,27 +1683,15 @@ class BasePlugin:
             try:
                 result = json.loads(raw)
             except json.JSONDecodeError:
-                if self._language == 'EN':
-                    Domoticz.Error(f'[GC] Failed to send notification: unexpected response from Domoticz: {raw[:200]!r}')
-                else:
-                    Domoticz.Error(f'[GC] Notificatie versturen mislukt: onverwacht antwoord van Domoticz: {raw[:200]!r}')
+                Domoticz.Error(f'[GC] Notificatie versturen mislukt: onverwacht antwoord van Domoticz: {raw[:200]!r}')
                 return
             if result.get('status') != 'OK':
-                if self._language == 'EN':
-                    Domoticz.Error(f'[GC] Notification rejected by Domoticz: {result}')
-                else:
-                    Domoticz.Error(f'[GC] Notificatie geweigerd door Domoticz: {result}')
+                Domoticz.Error(f'[GC] Notificatie geweigerd door Domoticz: {result}')
                 return
             self._notify_sent_date = today
-            if self._language == 'EN':
-                Domoticz.Log(f'[GC] Notification sent: {subject}')
-            else:
-                Domoticz.Log(f'[GC] Notificatie verstuurd: {subject}')
+            Domoticz.Log(f'[GC] Notificatie verstuurd: {subject}')
         except Exception as exc:
-            if self._language == 'EN':
-                Domoticz.Error(f'[GC] Failed to send notification: {type(exc).__name__}: {exc}')
-            else:
-                Domoticz.Error(f'[GC] Notificatie versturen mislukt: {type(exc).__name__}: {exc}')
+            Domoticz.Error(f'[GC] Notificatie versturen mislukt: {type(exc).__name__}: {exc}')
 
     def _update_notify_devices(self, future: List[Dict]) -> None:
         now = datetime.datetime.now()
@@ -1762,10 +1722,10 @@ class BasePlugin:
 
             if today_entry and current_minutes < self._today_to_min:
                 display_type = apply_type_alias(today_entry['type'])
-                notify_text = f"{ICON} <span style='color:white;'>{self._label_today} : </span> {display_type}"
+                notify_text = f"{ICON} <span style='color:white;'>Vandaag : </span> {display_type}"
             elif tomorrow_entry and current_minutes >= self._tomorrow_until_min:
                 display_type = apply_type_alias(tomorrow_entry['type'])
-                notify_text = f"{ICON} <span style='color:white;'>{self._label_tomorrow} : </span> {display_type}"
+                notify_text = f"{ICON} <span style='color:white;'>Morgen : </span> {display_type}"
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
         if Devices[self.UNIT_NOTIFY].sValue != notify_text:

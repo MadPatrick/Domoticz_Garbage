@@ -71,7 +71,7 @@ These parameters are set in the Domoticz hardware setup UI:
 | **Huisnummer suffix** | House number addition (e.g. `A`, `bis`) | *(empty)* |
 | **Extra** | Module-specific extra value (see [Module-specific notes](#module-specific-notes)) | *(empty)* |
 | **Enable notification** | Send a push/e-mail notification on pickup days (`True` / `False`) | `False` |
-| **Language / Taal** | Output language for labels and date names: `NL` = Nederlands, `EN` = English | `NL` |
+| **Language** | Display language for labels (`EN` / `NL`) | `EN` |
 | **Domoticz IP** | IP address of the Domoticz server for sending notifications (`Address` field) | `127.0.0.1` |
 | **Domoticz Port** | Port of the Domoticz server for sending notifications (`Port` field) | `8080` |
 
@@ -88,14 +88,14 @@ The plugin re-reads this file on every restart (no Domoticz restart required —
 | `TomorrowTime` | From what time the "Tomorrow" label is shown (HH:MM) | `16:00` |
 | `NotifyTime` | Time at which the notification is sent on the pickup day or the day before (HH:MM) | `07:00` |
 | `NotifyLevel` | Priority of the notification (`-2`=very low … `2`=emergency) | `1` |
-| `LabelToday` | Label used when the pickup is today | `Today` (EN) / `Vandaag` (NL) |
-| `LabelTomorrow` | Label used when the pickup is tomorrow | `Tomorrow` (EN) / `Morgen` (NL) |
-| `LabelNoData` | Text shown when no upcoming pickup data is available | `No collection data available` (EN) / `Geen verzamelgegevens beschikbaar` (NL) |
+| `LabelToday` | Label used when the pickup is today | `Today` / `Vandaag` (NL) |
+| `LabelTomorrow` | Label used when the pickup is tomorrow | `Tomorrow` / `Morgen` (NL) |
+| `LabelNoData` | Text shown when no upcoming pickup data is available | `No collection data available` / `Geen verzamelgegevens beschikbaar` (NL) |
 
-> **Note:** If `LabelToday`, `LabelTomorrow`, or `LabelNoData` are set in `config.txt`, those values always take precedence over the **Language / Taal** selector. Remove or comment out those entries in `config.txt` to let the language selector control the labels automatically.
+> **Note:** The default values for `LabelToday`, `LabelTomorrow`, and `LabelNoData` are automatically set based on the **Language** parameter in the Domoticz hardware configuration panel. Values specified in `config.txt` always take precedence.
 
 > **Note:** Enabling or disabling notifications is done via the **Enable notification** dropdown in the Domoticz hardware configuration panel, not in `config.txt`.
-Pickup dates are always displayed in the format **`wd dd mmm`** (e.g. `ma 07 apr` in NL, `Mon 07 Apr` in EN).
+Pickup dates are always displayed in the format **`wd dd mmm`** (e.g. `ma 07 apr`).
 
 ### Module-specific notes
 
