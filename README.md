@@ -171,7 +171,7 @@ No additional scripts or dzVents rules are needed — the plugin updates both de
 
 ### E-mail / push notifications
 
-Enable notifications via the **Enable notification** dropdown in the Domoticz hardware configuration panel (**Setup → Hardware → [plugin] → Edit**). The plugin will then send a notification via **all configured Domoticz notification channels** (e-mail, Pushover, Telegram, etc.) at the time specified by `NotifyTime`:
+Enable notifications via the **Enable notification** dropdown in the Domoticz hardware configuration panel (**Setup → Hardware → [plugin] → Edit**). The plugin sends the message at `NotifyTime` via Domoticz's built-in `SendNotification` API to **all configured notification channels** (e-mail, Pushover, Telegram, etc.):
 
 | Situation | Notification sent |
 |---|---|
