@@ -71,7 +71,7 @@ These parameters are set in the Domoticz hardware setup UI:
 | **Huisnummer suffix** | House number addition (e.g. `A`, `bis`) | *(empty)* |
 | **Extra** | Module-specific extra value (see [Module-specific notes](#module-specific-notes)) | *(empty)* |
 | **Enable notification** | Send a push/e-mail notification on pickup days (`True` / `False`) | `False` |
-| **Language** | Display language for labels (`EN` / `NL`) | `EN` |
+| **Language** | Display language selector via `SerialPort` for labels, device reminders, date names, and plugin logs (`EN` / `NL`) | `EN` |
 | **Domoticz IP** | IP address of the Domoticz server for sending notifications (`Address` field) | `127.0.0.1` |
 | **Domoticz Port** | Port of the Domoticz server for sending notifications (`Port` field) | `8080` |
 
@@ -92,7 +92,7 @@ The plugin re-reads this file on every restart (no Domoticz restart required —
 | `LabelTomorrow` | Label used when the pickup is tomorrow | `Tomorrow` / `Morgen` (NL) |
 | `LabelNoData` | Text shown when no upcoming pickup data is available | `No collection data available` / `Geen verzamelgegevens beschikbaar` (NL) |
 
-> **Note:** The default values for `LabelToday`, `LabelTomorrow`, and `LabelNoData` are automatically set based on the **Language** parameter in the Domoticz hardware configuration panel. Values specified in `config.txt` always take precedence.
+> **Note:** The default values for `LabelToday`, `LabelTomorrow`, and `LabelNoData` are automatically set based on the **Language** parameter in the Domoticz hardware configuration panel (`SerialPort`: `EN`/`NL`). Values specified in `config.txt` always take precedence.
 
 > **Note:** Enabling or disabling notifications is done via the **Enable notification** dropdown in the Domoticz hardware configuration panel, not in `config.txt`.
 Pickup dates are always displayed in the format **`wd dd mmm`** (e.g. `ma 07 apr`).

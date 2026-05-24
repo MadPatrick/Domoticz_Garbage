@@ -1535,7 +1535,12 @@ class BasePlugin:
                 f'morgen vanaf: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d} | '
                 f'notificatie: {"aan" if self._notify_enabled else "uit"}'
             )
-            + (f' at {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}' if self._notify_enabled else '')
+            + (
+                self._t(
+                    f' at {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}',
+                    f' om {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}'
+                ) if self._notify_enabled else ''
+            )
         )
 
         if self.UNIT_TEXT not in Devices:
