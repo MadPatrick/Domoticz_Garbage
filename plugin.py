@@ -484,7 +484,7 @@ class MijnAfvalwijzerApiModule(GarbageModule):
 
 class XimmioModule(GarbageModule):
     name = 'Ximmio'
-    _HOSTS = ['https://wasteprod2api.ximmio.com', 'https://wasteapi.2go-mobile.com']
+    _HOSTS = ['https://wasteapi.ximmio.com'] #, 'https://wasteapi.2go-mobile.com']
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         companycode = extra.strip()
