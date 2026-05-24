@@ -22,11 +22,11 @@ NotifyLevel = 1
 
 # Label shown when the pickup is today
 # Leave empty to use the language-selector default (Today / Vandaag)
-LabelToday = Vandaag
+#LabelToday = Vandaag
 
 # Label shown when the pickup is tomorrow
 # Leave empty to use the language-selector default (Tomorrow / Morgen)
-LabelTomorrow = Morgen
+#LabelTomorrow = Morgen
 
 # Text shown when no upcoming pickup data is available
 # Leave empty to use the language-selector default
