@@ -20,11 +20,14 @@ NotifyTime = 07:00
 # Priority level of the notification (-2=very low, -1=low, 0=normal, 1=high, 2=emergency)
 NotifyLevel = 1
 
-# Label shown when the pickup is today (default: Today)
+# Label shown when the pickup is today
+# Leave empty to use the language-selector default (Today / Vandaag)
 LabelToday = Vandaag
 
-# Label shown when the pickup is tomorrow (default: Tomorrow)
+# Label shown when the pickup is tomorrow
+# Leave empty to use the language-selector default (Tomorrow / Morgen)
 LabelTomorrow = Morgen
 
-# Text shown when no upcoming pickup data is available (default: No collection data available)
+# Text shown when no upcoming pickup data is available
+# Leave empty to use the language-selector default
 LabelNoData = Geen verzamelgegevens beschikbaar
