@@ -102,7 +102,7 @@
         <param field="Mode2" label="Zipcode" width="100px" required="false" default="" />
         <param field="Mode3" label="House number" width="75px" required="false" default="" />
         <param field="Mode4" label="House number suffix" width="75px" required="false" default="" />
-        <param field="Mode5" label="Extra: Hostname / Street / BPName / Companycode / CSV-pad / City(afvalinfo)" width="300px" required="false" default="" />
+        <param field="Mode5" label="Extra: Hostname / Street / BPName / Companycode / CSV path / City(afvalinfo)" width="300px" required="false" default="" />
         <param field="Mode6" label="Enable notification" width="100px">
             <options>
                 <option label="No" value="false" default="true"/>
@@ -196,11 +196,24 @@ def _parse_hhmm_to_min(val: str, default: int) -> int:
 # Dutch date/time helpers
 # --------------------------------------------------------------------------------------------
 
-DUTCH_WEEKDAYS_SHORT = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo']
-DUTCH_WEEKDAYS_LONG = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag', 'zondag']
-DUTCH_MONTHS_SHORT = ['', 'jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']
-DUTCH_MONTHS_LONG = ['', 'januari', 'februari', 'maart', 'april', 'mei', 'juni',
-                     'juli', 'augustus', 'september', 'oktober', 'november', 'december']
+WEEKDAYS_SHORT = {
+    'EN': ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'],
+    'NL': ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'],
+}
+WEEKDAYS_LONG = {
+    'EN': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+    'NL': ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag', 'zondag'],
+}
+MONTHS_SHORT = {
+    'EN': ['', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'],
+    'NL': ['', 'jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'],
+}
+MONTHS_LONG = {
+    'EN': ['', 'january', 'february', 'march', 'april', 'may', 'june',
+           'july', 'august', 'september', 'october', 'november', 'december'],
+    'NL': ['', 'januari', 'februari', 'maart', 'april', 'mei', 'juni',
+           'juli', 'augustus', 'september', 'oktober', 'november', 'december'],
+}
 
 # --------------------------------------------------------------------------------------------
 # Waste type aliases
@@ -249,12 +262,13 @@ INPUT_MONTHS: Dict[str, int] = {
 }
 
 
-def format_date(d: datetime.date, fmt: str) -> str:
+def format_date(d: datetime.date, fmt: str, lang: str = 'EN') -> str:
+    lang_key = 'NL' if (lang or '').upper() == 'NL' else 'EN'
     result = fmt
-    result = result.replace('wdd', DUTCH_WEEKDAYS_LONG[d.weekday()])
-    result = result.replace('wd', DUTCH_WEEKDAYS_SHORT[d.weekday()])
-    result = result.replace('mmmm', DUTCH_MONTHS_LONG[d.month])
-    result = result.replace('mmm', DUTCH_MONTHS_SHORT[d.month])
+    result = result.replace('wdd', WEEKDAYS_LONG[lang_key][d.weekday()])
+    result = result.replace('wd', WEEKDAYS_SHORT[lang_key][d.weekday()])
+    result = result.replace('mmmm', MONTHS_LONG[lang_key][d.month])
+    result = result.replace('mmm', MONTHS_SHORT[lang_key][d.month])
     result = result.replace('mm', f'{d.month:02d}')
     result = result.replace('dd', f'{d.day:02d}')
     result = result.replace('yyyy', str(d.year))
@@ -1440,6 +1454,10 @@ class BasePlugin:
         self._label_nodata = _CONFIG_DEFAULTS['LabelNoData']
         self._domoticz_ip = '127.0.0.1'
         self._domoticz_port = '8080'
+        self._lang = 'EN'
+
+    def _t(self, en: str, nl: str) -> str:
+        return nl if self._lang == 'NL' else en
 
     def onStart(self):
         Domoticz.Heartbeat(self.HEARTBEAT_SECS)
@@ -1476,7 +1494,8 @@ class BasePlugin:
             self._notify_level = 1
 
         _lang = Parameters.get('SerialPort', 'EN').strip().upper()
-        _label_defaults = _NL_DEFAULTS if _lang == 'NL' else _CONFIG_DEFAULTS
+        self._lang = 'NL' if _lang == 'NL' else 'EN'
+        _label_defaults = _NL_DEFAULTS if self._lang == 'NL' else _CONFIG_DEFAULTS
         self._label_today = cfg.get('LabelToday', _label_defaults['LabelToday']).strip() or _label_defaults['LabelToday']
         self._label_tomorrow = cfg.get('LabelTomorrow', _label_defaults['LabelTomorrow']).strip() or _label_defaults['LabelTomorrow']
         self._label_nodata = cfg.get('LabelNoData', _label_defaults['LabelNoData']).strip() or _label_defaults['LabelNoData']
@@ -1487,38 +1506,55 @@ class BasePlugin:
             if "Garbage" in Images:
                 self.imageID = Images["Garbage"].ID
             else:
-                Domoticz.Error("Unable to load icon pack 'Garbage.zip'")
+                Domoticz.Error(self._t("Unable to load icon pack 'Garbage.zip'", "Kan icon pack 'Garbage.zip' niet laden"))
         except Exception as e:
-            Domoticz.Error(f"Error loading icon pack 'Garbage': {e}")
+            Domoticz.Error(self._t(f"Error loading icon pack 'Garbage': {e}", f"Fout bij laden icon pack 'Garbage': {e}"))
 
         self._module = MODULES.get(module_key)
         if not self._module:
-            Domoticz.Error(f'Unknown module key: "{module_key}". Check Mode1 parameter.')
+            Domoticz.Error(self._t(
+                f'Unknown module key: "{module_key}". Check Mode1 parameter.',
+                f'Onbekende module key: "{module_key}". Controleer Mode1 parameter.'
+            ))
             return
 
         Domoticz.Log(
-            f'Garbage Calendar started | module: {self._module.name} | '
-            f'zipcode: {self._zipcode} | housenr: {self._housenr}{self._housenrsuf} | '
-            f'refresh at: {self._update_hour:02d}:{self._update_min:02d} | '
-            f'events: {self._show_events} | '
-            f'today until: {self._today_to_min // 60:02d}:{self._today_to_min % 60:02d} | '
-            f'tomorrow from: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d} | '
-            f'notification: {"on" if self._notify_enabled else "off"}'
-            + (f' at {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}' if self._notify_enabled else '')
+            self._t(
+                f'Garbage Calendar started | module: {self._module.name} | '
+                f'zipcode: {self._zipcode} | housenr: {self._housenr}{self._housenrsuf} | '
+                f'refresh at: {self._update_hour:02d}:{self._update_min:02d} | '
+                f'events: {self._show_events} | '
+                f'today until: {self._today_to_min // 60:02d}:{self._today_to_min % 60:02d} | '
+                f'tomorrow from: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d} | '
+                f'notification: {"on" if self._notify_enabled else "off"}',
+                f'Garbage Calendar gestart | module: {self._module.name} | '
+                f'postcode: {self._zipcode} | huisnr: {self._housenr}{self._housenrsuf} | '
+                f'update om: {self._update_hour:02d}:{self._update_min:02d} | '
+                f'events: {self._show_events} | '
+                f'vandaag tot: {self._today_to_min // 60:02d}:{self._today_to_min % 60:02d} | '
+                f'morgen vanaf: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d} | '
+                f'notificatie: {"aan" if self._notify_enabled else "uit"}'
+            )
+            + (
+                self._t(
+                    f' at {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}',
+                    f' om {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}'
+                ) if self._notify_enabled else ''
+            )
         )
 
         if self.UNIT_TEXT not in Devices:
             self._create_text_device()
-            Domoticz.Log('Text device "Calendar" created')
+            Domoticz.Log(self._t('Text device "Calendar" created', 'Tekstapparaat "Calendar" aangemaakt'))
 
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
-            Domoticz.Log('Text device "Container" created')
+            Domoticz.Log(self._t('Text device "Container" created', 'Tekstapparaat "Container" aangemaakt'))
 
         self._trigger_fetch()
 
     def onStop(self):
-        Domoticz.Log('Garbage Calendar stopped')
+        Domoticz.Log(self._t('Garbage Calendar stopped', 'Garbage Calendar gestopt'))
 
     def onHeartbeat(self):
         if not self._module:
@@ -1560,7 +1596,10 @@ class BasePlugin:
 
     def _do_fetch(self):
         try:
-            Domoticz.Log(f'Fetching calendar data from {self._module.name}...')
+            Domoticz.Log(self._t(
+                f'Fetching calendar data from {self._module.name}...',
+                f'Kalenderdata ophalen van {self._module.name}...'
+            ))
             results = self._module.fetch(
                 self._zipcode,
                 self._housenr,
@@ -1570,10 +1609,13 @@ class BasePlugin:
             with self._lock:
                 self._cached_results = results
                 self._last_fetch_date = datetime.date.today()
-            Domoticz.Log(f'Fetch complete: {len(results)} upcoming event(s) found')
+            Domoticz.Log(self._t(
+                f'Fetch complete: {len(results)} upcoming event(s) found',
+                f'Ophalen voltooid: {len(results)} aankomend(e) event(s) gevonden'
+            ))
             self._update_device()
         except Exception as e:
-            Domoticz.Error(f'Fetch error: {e}')
+            Domoticz.Error(self._t(f'Fetch error: {e}', f'Ophaalfout: {e}'))
         finally:
             with self._lock:
                 self._fetching = False
@@ -1600,7 +1642,7 @@ class BasePlugin:
                 elif r['date'] == tomorrow:
                     date_str = self._label_tomorrow
                 else:
-                    date_str = format_date(r['date'], self._date_fmt)
+                    date_str = format_date(r['date'], self._date_fmt, self._lang)
                 display_type = apply_type_alias(r['type'])
                 icon_url = r.get('icon_url', '')
 
@@ -1683,15 +1725,27 @@ class BasePlugin:
             try:
                 result = json.loads(raw)
             except json.JSONDecodeError:
-                Domoticz.Error(f'[GC] Notificatie versturen mislukt: onverwacht antwoord van Domoticz: {raw[:200]!r}')
+                Domoticz.Error(self._t(
+                    f'[GC] Failed to send notification: unexpected response from Domoticz: {raw[:200]!r}',
+                    f'[GC] Notificatie versturen mislukt: onverwacht antwoord van Domoticz: {raw[:200]!r}'
+                ))
                 return
             if result.get('status') != 'OK':
-                Domoticz.Error(f'[GC] Notificatie geweigerd door Domoticz: {result}')
+                Domoticz.Error(self._t(
+                    f'[GC] Notification rejected by Domoticz: {result}',
+                    f'[GC] Notificatie geweigerd door Domoticz: {result}'
+                ))
                 return
             self._notify_sent_date = today
-            Domoticz.Log(f'[GC] Notificatie verstuurd: {subject}')
+            Domoticz.Log(self._t(
+                f'[GC] Notification sent: {subject}',
+                f'[GC] Notificatie verstuurd: {subject}'
+            ))
         except Exception as exc:
-            Domoticz.Error(f'[GC] Notificatie versturen mislukt: {type(exc).__name__}: {exc}')
+            Domoticz.Error(self._t(
+                f'[GC] Failed to send notification: {type(exc).__name__}: {exc}',
+                f'[GC] Notificatie versturen mislukt: {type(exc).__name__}: {exc}'
+            ))
 
     def _update_notify_devices(self, future: List[Dict]) -> None:
         now = datetime.datetime.now()
@@ -1722,10 +1776,10 @@ class BasePlugin:
 
             if today_entry and current_minutes < self._today_to_min:
                 display_type = apply_type_alias(today_entry['type'])
-                notify_text = f"{ICON} <span style='color:white;'>Vandaag : </span> {display_type}"
+                notify_text = f"{ICON} <span style='color:white;'>{self._label_today} : </span> {display_type}"
             elif tomorrow_entry and current_minutes >= self._tomorrow_until_min:
                 display_type = apply_type_alias(tomorrow_entry['type'])
-                notify_text = f"{ICON} <span style='color:white;'>Morgen : </span> {display_type}"
+                notify_text = f"{ICON} <span style='color:white;'>{self._label_tomorrow} : </span> {display_type}"
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
         if Devices[self.UNIT_NOTIFY].sValue != notify_text:
