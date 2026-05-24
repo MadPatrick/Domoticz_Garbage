@@ -1707,35 +1707,11 @@ class BasePlugin:
             return
 
         try:
-            qs = urllib.parse.urlencode({
-                'type':    'command',
-                'param':   'sendnotification',
-                'subject': subject,
-                'body':    subject,
-            })
-            url = f'http://{self._domoticz_ip}:{self._domoticz_port}/json.htm?{qs}'
-            req = urllib.request.Request(url)  # noqa: S310
-            username = Parameters.get('Username', '') or ''
-            password = Parameters.get('Password', '') or ''
-            if username:
-                credentials = base64.b64encode(f'{username}:{password}'.encode()).decode()
-                req.add_header('Authorization', f'Basic {credentials}')
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                raw = resp.read()
-            try:
-                result = json.loads(raw)
-            except json.JSONDecodeError:
-                Domoticz.Error(self._t(
-                    f'[GC] Failed to send notification: unexpected response from Domoticz: {raw[:200]!r}',
-                    f'[GC] Notificatie versturen mislukt: onverwacht antwoord van Domoticz: {raw[:200]!r}'
-                ))
-                return
-            if result.get('status') != 'OK':
-                Domoticz.Error(self._t(
-                    f'[GC] Notification rejected by Domoticz: {result}',
-                    f'[GC] Notificatie geweigerd door Domoticz: {result}'
-                ))
-                return
+            Domoticz.SendNotification(
+                Subject=subject,
+                Body=subject,
+                Priority=self._notify_level,
+            )
             self._notify_sent_date = today
             Domoticz.Log(self._t(
                 f'[GC] Notification sent: {subject}',
