@@ -1503,6 +1503,20 @@ class BasePlugin:
             self._create_notify_device()
             Domoticz.Log('Text device "Container" created')
 
+        if self._notify_enabled:
+            try:
+                kwargs = {
+                    'Subject':  '[GC] Plugin gestart – notificatie actief',
+                    'Body':     '[GC] Plugin gestart – notificatie actief',
+                    'Priority': self._notify_level,
+                }
+                if self._notify_subsystem:
+                    kwargs['SubSystem'] = self._notify_subsystem
+                Domoticz.SendNotification(**kwargs)
+                Domoticz.Log('[GC] Test notificatie verstuurd bij opstarten')
+            except Exception as exc:
+                Domoticz.Error(f'[GC] Test notificatie versturen mislukt: {type(exc).__name__}: {exc}')
+
         self._trigger_fetch()
 
     def onStop(self):
