@@ -1709,10 +1709,10 @@ class BasePlugin:
 
             if today_entry and current_minutes < self._today_to_min:
                 display_type = apply_type_alias(today_entry['type'])
-                notify_text = f"{ICON} <span style='color:white;'>Vandaag : </span> {display_type}"
+                notify_text = f"{ICON} <span style='color:white;'>{self._label_today} : </span> {display_type}"
             elif tomorrow_entry and current_minutes >= self._tomorrow_until_min:
                 display_type = apply_type_alias(tomorrow_entry['type'])
-                notify_text = f"{ICON} <span style='color:white;'>Morgen : </span> {display_type}"
+                notify_text = f"{ICON} <span style='color:white;'>{self._label_tomorrow} : </span> {display_type}"
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
         if Devices[self.UNIT_NOTIFY].sValue != notify_text:
