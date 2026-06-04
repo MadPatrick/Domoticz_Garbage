@@ -4,9 +4,6 @@
 # GarbageCalendar - Domoticz Python Plugin
 # Retrieves garbage pickup schedules and updates a Domoticz Text device.
 #
-# ** Originaly based on the LUA script made by JvdZ **
-# https://forum.domoticz.com/viewtopic.php?t=31295
-#
 # Supported modules:
 #   1  - mijnafvalwijzer       (HTML scraping, NL)
 #   2  - mijnafvalwijzer_api   (JSON API, NL)
@@ -31,12 +28,11 @@
 #   Restart Domoticz, then add the plugin via Setup > Hardware.
 
 """
-<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick/jvanderzande" version="1.0.0"
+<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick" version="1.1.0"
     externallink="https://github.com/MadPatrick/Domoticz_Garbage">
     <description>
         <h2>Garbage Calendar</h2>
-        <p>Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.
-        <p> Originaly based on the LUA script made by JvdZ</p>
+        <p>Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.</p>
         <p><b>Provider:</b> Choose the module that matches your municipality.</p>
         <p><b>Extra field</b> depends on the selected module:</p>
         <table>
@@ -113,8 +109,6 @@
                 <option label="Yes" value="true"/>
             </options>
         </param>
-        <param field="Address" label="Domoticz IP" width="150px" required="false" default="127.0.0.1" />
-        <param field="Port" label="Domoticz Port" width="75px" required="false" default="8080" />
     </params>
 </plugin>
 """
@@ -144,8 +138,9 @@ _CONFIG_DEFAULTS: Dict[str, str] = {
     'ShowEvents':    '3',
     'TodayTime':     '16:00',
     'TomorrowTime':  '16:00',
-    'NotifyTime':    '07:00',
-    'NotifyLevel':   '1',
+    'NotifyTime':      '07:00',
+    'NotifyLevel':     '1',
+    'NotifySubSystem': '',
     'LabelToday':    'Today',
     'LabelTomorrow': 'Tomorrow',
     'LabelNoData':   'No collection data available',
@@ -1421,6 +1416,7 @@ class BasePlugin:
         self._notify_enabled = False
         self._notify_time_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['NotifyTime'], 7 * 60)
         self._notify_level = 1
+        self._notify_subsystem = ''
         self._notify_sent_date: Optional[datetime.date] = None
         self._last_fetch_date: Optional[datetime.date] = None
         self._cached_results: List[Dict] = []
@@ -1430,8 +1426,6 @@ class BasePlugin:
         self._label_today = _CONFIG_DEFAULTS['LabelToday']
         self._label_tomorrow = _CONFIG_DEFAULTS['LabelTomorrow']
         self._label_nodata = _CONFIG_DEFAULTS['LabelNoData']
-        self._domoticz_ip = '127.0.0.1'
-        self._domoticz_port = '8080'
 
     def onStart(self):
         Domoticz.Heartbeat(self.HEARTBEAT_SECS)
@@ -1458,14 +1452,12 @@ class BasePlugin:
         self._today_to_min = _parse_hhmm_to_min(cfg.get('TodayTime', '16:00'), 16 * 60)
         self._tomorrow_until_min = _parse_hhmm_to_min(cfg.get('TomorrowTime', '16:00'), 16 * 60)
         self._notify_enabled = Parameters.get('Mode6', 'false').strip().lower() == 'true'
-        self._domoticz_ip = Parameters.get('Address', '127.0.0.1').strip() or '127.0.0.1'
-        _raw_port = Parameters.get('Port', '8080').strip()
-        self._domoticz_port = _raw_port if (_raw_port.isdigit() and 1 <= int(_raw_port) <= 65535) else '8080'
         self._notify_time_min = _parse_hhmm_to_min(cfg.get('NotifyTime', '07:00'), 7 * 60)
         try:
             self._notify_level = max(-2, min(2, int(cfg.get('NotifyLevel', '1') or '1')))
         except ValueError:
             self._notify_level = 1
+        self._notify_subsystem = cfg.get('NotifySubSystem', '').strip()
 
         self._label_today = cfg.get('LabelToday', _CONFIG_DEFAULTS['LabelToday']).strip() or _CONFIG_DEFAULTS['LabelToday']
         self._label_tomorrow = cfg.get('LabelTomorrow', _CONFIG_DEFAULTS['LabelTomorrow']).strip() or _CONFIG_DEFAULTS['LabelTomorrow']
@@ -1494,7 +1486,9 @@ class BasePlugin:
             f'today until: {self._today_to_min // 60:02d}:{self._today_to_min % 60:02d} | '
             f'tomorrow from: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d} | '
             f'notification: {"on" if self._notify_enabled else "off"}'
-            + (f' at {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}' if self._notify_enabled else '')
+            + (f' at {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}'
+               + (f' subsystem: {self._notify_subsystem}' if self._notify_subsystem else '')
+               if self._notify_enabled else '')
         )
 
         if self.UNIT_TEXT not in Devices:
@@ -1504,6 +1498,20 @@ class BasePlugin:
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
             Domoticz.Log('Text device "Container" created')
+
+        if self._notify_enabled:
+            try:
+                kwargs = {
+                    'Subject':  '[GC] Plugin gestart – notificatie actief',
+                    'Body':     '[GC] Plugin gestart – notificatie actief',
+                    'Priority': self._notify_level,
+                }
+                if self._notify_subsystem:
+                    kwargs['SubSystem'] = self._notify_subsystem
+                Domoticz.SendNotification(**kwargs)
+                Domoticz.Log('[GC] Test notificatie verstuurd bij opstarten')
+            except Exception as exc:
+                Domoticz.Error(f'[GC] Test notificatie versturen mislukt: {type(exc).__name__}: {exc}')
 
         self._trigger_fetch()
 
@@ -1655,29 +1663,14 @@ class BasePlugin:
             return
 
         try:
-            qs = urllib.parse.urlencode({
-                'type':    'command',
-                'param':   'sendnotification',
-                'subject': subject,
-                'body':    subject,
-            })
-            url = f'http://{self._domoticz_ip}:{self._domoticz_port}/json.htm?{qs}'
-            req = urllib.request.Request(url)  # noqa: S310
-            username = Parameters.get('Username', '') or ''
-            password = Parameters.get('Password', '') or ''
-            if username:
-                credentials = base64.b64encode(f'{username}:{password}'.encode()).decode()
-                req.add_header('Authorization', f'Basic {credentials}')
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                raw = resp.read()
-            try:
-                result = json.loads(raw)
-            except json.JSONDecodeError:
-                Domoticz.Error(f'[GC] Notificatie versturen mislukt: onverwacht antwoord van Domoticz: {raw[:200]!r}')
-                return
-            if result.get('status') != 'OK':
-                Domoticz.Error(f'[GC] Notificatie geweigerd door Domoticz: {result}')
-                return
+            kwargs = {
+                'Subject':  subject,
+                'Body':     subject,
+                'Priority': self._notify_level,
+            }
+            if self._notify_subsystem:
+                kwargs['SubSystem'] = self._notify_subsystem
+            Domoticz.SendNotification(**kwargs)
             self._notify_sent_date = today
             Domoticz.Log(f'[GC] Notificatie verstuurd: {subject}')
         except Exception as exc:
@@ -1712,10 +1705,10 @@ class BasePlugin:
 
             if today_entry and current_minutes < self._today_to_min:
                 display_type = apply_type_alias(today_entry['type'])
-                notify_text = f"{ICON} <span style='color:white;'>Vandaag : </span> {display_type}"
+                notify_text = f"{ICON} <span style='color:white;'>{self._label_today} : </span> {display_type}"
             elif tomorrow_entry and current_minutes >= self._tomorrow_until_min:
                 display_type = apply_type_alias(tomorrow_entry['type'])
-                notify_text = f"{ICON} <span style='color:white;'>Morgen : </span> {display_type}"
+                notify_text = f"{ICON} <span style='color:white;'>{self._label_tomorrow} : </span> {display_type}"
         if self.UNIT_NOTIFY not in Devices:
             self._create_notify_device()
         if Devices[self.UNIT_NOTIFY].sValue != notify_text:
