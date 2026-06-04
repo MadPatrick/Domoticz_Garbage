@@ -4,9 +4,6 @@
 # GarbageCalendar - Domoticz Python Plugin
 # Retrieves garbage pickup schedules and updates a Domoticz Text device.
 #
-# ** Originaly based on the LUA script made by JvdZ **
-# https://forum.domoticz.com/viewtopic.php?t=31295
-#
 # Supported modules:
 #   1  - mijnafvalwijzer       (HTML scraping, NL)
 #   2  - mijnafvalwijzer_api   (JSON API, NL)
@@ -31,12 +28,11 @@
 #   Restart Domoticz, then add the plugin via Setup > Hardware.
 
 """
-<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick/jvanderzande" version="1.0.0"
+<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick" version="1.1.0"
     externallink="https://github.com/MadPatrick/Domoticz_Garbage">
     <description>
         <h2>Garbage Calendar</h2>
-        <p>Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.
-        <p> Originaly based on the LUA script made by JvdZ</p>
+        <p>Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.</p>
         <p><b>Provider:</b> Choose the module that matches your municipality.</p>
         <p><b>Extra field</b> depends on the selected module:</p>
         <table>
