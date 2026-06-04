@@ -20,6 +20,9 @@ NotifyTime = 07:00
 # Priority level of the notification (-2=very low, -1=low, 0=normal, 1=high, 2=emergency)
 NotifyLevel = 1
 
+# Notification subsystem to use (e.g. telegram, kodi, pushbullet). Leave empty to send to all configured subsystems.
+NotifySubSystem = 
+
 # Label shown when the pickup is today (default: Today)
 LabelToday = Vandaag
 

@@ -113,8 +113,6 @@
                 <option label="Yes" value="true"/>
             </options>
         </param>
-        <param field="Address" label="Domoticz IP" width="150px" required="false" default="127.0.0.1" />
-        <param field="Port" label="Domoticz Port" width="75px" required="false" default="8080" />
     </params>
 </plugin>
 """
@@ -144,8 +142,9 @@ _CONFIG_DEFAULTS: Dict[str, str] = {
     'ShowEvents':    '3',
     'TodayTime':     '16:00',
     'TomorrowTime':  '16:00',
-    'NotifyTime':    '07:00',
-    'NotifyLevel':   '1',
+    'NotifyTime':      '07:00',
+    'NotifyLevel':     '1',
+    'NotifySubSystem': '',
     'LabelToday':    'Today',
     'LabelTomorrow': 'Tomorrow',
     'LabelNoData':   'No collection data available',
@@ -1421,6 +1420,7 @@ class BasePlugin:
         self._notify_enabled = False
         self._notify_time_min = _parse_hhmm_to_min(_CONFIG_DEFAULTS['NotifyTime'], 7 * 60)
         self._notify_level = 1
+        self._notify_subsystem = ''
         self._notify_sent_date: Optional[datetime.date] = None
         self._last_fetch_date: Optional[datetime.date] = None
         self._cached_results: List[Dict] = []
@@ -1430,8 +1430,6 @@ class BasePlugin:
         self._label_today = _CONFIG_DEFAULTS['LabelToday']
         self._label_tomorrow = _CONFIG_DEFAULTS['LabelTomorrow']
         self._label_nodata = _CONFIG_DEFAULTS['LabelNoData']
-        self._domoticz_ip = '127.0.0.1'
-        self._domoticz_port = '8080'
 
     def onStart(self):
         Domoticz.Heartbeat(self.HEARTBEAT_SECS)
@@ -1458,14 +1456,12 @@ class BasePlugin:
         self._today_to_min = _parse_hhmm_to_min(cfg.get('TodayTime', '16:00'), 16 * 60)
         self._tomorrow_until_min = _parse_hhmm_to_min(cfg.get('TomorrowTime', '16:00'), 16 * 60)
         self._notify_enabled = Parameters.get('Mode6', 'false').strip().lower() == 'true'
-        self._domoticz_ip = Parameters.get('Address', '127.0.0.1').strip() or '127.0.0.1'
-        _raw_port = Parameters.get('Port', '8080').strip()
-        self._domoticz_port = _raw_port if (_raw_port.isdigit() and 1 <= int(_raw_port) <= 65535) else '8080'
         self._notify_time_min = _parse_hhmm_to_min(cfg.get('NotifyTime', '07:00'), 7 * 60)
         try:
             self._notify_level = max(-2, min(2, int(cfg.get('NotifyLevel', '1') or '1')))
         except ValueError:
             self._notify_level = 1
+        self._notify_subsystem = cfg.get('NotifySubSystem', '').strip()
 
         self._label_today = cfg.get('LabelToday', _CONFIG_DEFAULTS['LabelToday']).strip() or _CONFIG_DEFAULTS['LabelToday']
         self._label_tomorrow = cfg.get('LabelTomorrow', _CONFIG_DEFAULTS['LabelTomorrow']).strip() or _CONFIG_DEFAULTS['LabelTomorrow']
@@ -1494,7 +1490,9 @@ class BasePlugin:
             f'today until: {self._today_to_min // 60:02d}:{self._today_to_min % 60:02d} | '
             f'tomorrow from: {self._tomorrow_until_min // 60:02d}:{self._tomorrow_until_min % 60:02d} | '
             f'notification: {"on" if self._notify_enabled else "off"}'
-            + (f' at {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}' if self._notify_enabled else '')
+            + (f' at {self._notify_time_min // 60:02d}:{self._notify_time_min % 60:02d}'
+               + (f' subsystem: {self._notify_subsystem}' if self._notify_subsystem else '')
+               if self._notify_enabled else '')
         )
 
         if self.UNIT_TEXT not in Devices:
@@ -1655,29 +1653,14 @@ class BasePlugin:
             return
 
         try:
-            qs = urllib.parse.urlencode({
-                'type':    'command',
-                'param':   'sendnotification',
-                'subject': subject,
-                'body':    subject,
-            })
-            url = f'http://{self._domoticz_ip}:{self._domoticz_port}/json.htm?{qs}'
-            req = urllib.request.Request(url)  # noqa: S310
-            username = Parameters.get('Username', '') or ''
-            password = Parameters.get('Password', '') or ''
-            if username:
-                credentials = base64.b64encode(f'{username}:{password}'.encode()).decode()
-                req.add_header('Authorization', f'Basic {credentials}')
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                raw = resp.read()
-            try:
-                result = json.loads(raw)
-            except json.JSONDecodeError:
-                Domoticz.Error(f'[GC] Notificatie versturen mislukt: onverwacht antwoord van Domoticz: {raw[:200]!r}')
-                return
-            if result.get('status') != 'OK':
-                Domoticz.Error(f'[GC] Notificatie geweigerd door Domoticz: {result}')
-                return
+            kwargs = {
+                'Subject':  subject,
+                'Body':     subject,
+                'Priority': self._notify_level,
+            }
+            if self._notify_subsystem:
+                kwargs['SubSystem'] = self._notify_subsystem
+            Domoticz.SendNotification(**kwargs)
             self._notify_sent_date = today
             Domoticz.Log(f'[GC] Notificatie verstuurd: {subject}')
         except Exception as exc:
