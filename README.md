@@ -3,6 +3,10 @@
 A Domoticz Python plugin that retrieves your garbage/waste collection schedule and displays upcoming pickup dates in a Domoticz Text device.  
 Supports 17 different waste-collection data sources used in the Netherlands and Belgium.
 
+**Originaly based on the LUA script made by JvdZ
+
+https://forum.domoticz.com/viewtopic.php?t=31295**
+
 ---
 
 ## Table of Contents
