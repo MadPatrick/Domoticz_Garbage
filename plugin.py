@@ -30,11 +30,12 @@
 """
 <plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick" version="1.1.0"
     externallink="https://github.com/MadPatrick/Domoticz_Garbage">
-    <description>
+    <description><br/>
         <h2>Garbage Calendar</h2>
         <p>Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.</p>
-        <p><b>Provider:</b> Choose the module that matches your municipality.</p>
-        <p><b>Extra field</b> depends on the selected module:</p>
+        <p>Provider : Choose the module that matches your municipality.</p>
+        <p>Extra field : depends on the selected module:</p>
+        <br/>
         <table>
             <tbody>
             <tr>
@@ -101,9 +102,12 @@
         </param>
         <param field="Mode2" label="Zipcode" width="100px" required="false" default="" />
         <param field="Mode3" label="House number" width="75px" required="false" default="" />
-        <param field="Mode4" label="House number suffix" width="75px" required="false" default="" />
-        <param field="Mode5" label="Extra: Hostname / Street / BPName / Companycode / CSV-pad / City(afvalinfo)" width="300px" required="false" default="" />
-        <param field="Mode6" label="Enable notification" width="100px">
+        <param field="Mode4" label="Suffix" width="75px" required="false" default="" />
+        <param field="Mode5" label="Extra" width="300px" default="">
+        <description><br/>Hostname / Street / BPName / Companycode / CSV-pad / City(afvalinfo)</description>
+        </param>
+
+        <param field="Mode6" label="Notification" width="100px">
             <options>
                 <option label="No" value="false" default="true"/>
                 <option label="Yes" value="true"/>
