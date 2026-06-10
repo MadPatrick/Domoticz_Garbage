@@ -3,35 +3,13 @@
 #
 # GarbageCalendar - Domoticz Python Plugin
 # Retrieves garbage pickup schedules and updates a Domoticz Text device.
-#
-# Supported modules:
-#   1  - mijnafvalwijzer       (HTML scraping, NL)
-#   2  - mijnafvalwijzer_api   (JSON API, NL)
-#   3  - ximmio                (Ximmio waste API, NL)
-#   4  - rova_api              (Rova waste API, NL)
-#   5  - rd4_api               (RD4 waste API, NL)
-#   6  - opzet                 (Opzet iCal, NL - requires Hostname)
-#   7  - opzet_api             (Opzet REST API, NL - requires Hostname)
-#   8  - recycleapp-be         (RecycleApp Belgium - requires Street)
-#   9  - omrin                 (Omrin NL - requires 'cryptography' package)
-#   10 - burgerportaal         (Firebase-based, NL - requires BPName: assen/bar/rmn)
-#   11 - rmn                   (RMN via burgerportaal, NL)
-#   12 - deafvalapp            (De Afval App, NL)
-#   13 - zuidlimburg           (ZuidLimburg HTML scraping, NL)
-#   14 - montferland           (Montferland REST, NL)
-#   15 - csv_file              (Local CSV file - requires file path in Extra field)
-#   16 - afvalinfo             (afvalinfo.nl via trashapi, NL - requires Hostname = gemeente/city)
-#   17 - reinis                (reinis.nl REST API, NL)
-#
-# Installation:
-#   Copy this file to: <domoticz>/plugins/GarbageCalendar/plugin.py
-#   Restart Domoticz, then add the plugin via Setup > Hardware.
 
 """
-<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick" version="1.1.0"
+<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick" version="1.1.1"
     externallink="https://github.com/MadPatrick/Domoticz_Garbage">
     <description><br/>
         <h2>Garbage Calendar</h2>
+        <p>Version 1.1.1</p>
         <p>Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.</p>
         <p>Provider : Choose the module that matches your municipality.</p>
         <p>Extra field : depends on the selected module:</p>
@@ -98,6 +76,7 @@
                 <option label="15 - csv_file" value="15" />
                 <option label="16 - afvalinfo (NL)" value="16" />
                 <option label="17 - reinis (NL)" value="17" />
+                <option label="18 - hvc_api (HVC Groep)" value="18" />
             </options>
         </param>
         <param field="Mode2" label="Zipcode" width="100px" required="false" default="" />
@@ -1373,6 +1352,55 @@ class ReinisModule(OpzetApiModule):
 
 
 # --------------------------------------------------------------------------------------------
+# Module 18: hvc_api  (HVC Groep inzamelkalender)
+# --------------------------------------------------------------------------------------------
+
+class HvcGroepModule(OpzetApiModule):
+    """HVC Groep inzamelkalender.
+
+    HVC gebruikt de Opzet-engine maar met afwijkende URL-structuur:
+      bagId:    GET /adressen/<postcode>:<huisnr>        (geen /rest/ prefix)
+      kalender: GET /rest/adressen/<bagId>/kalender/<year>
+      stromen:  GET /rest/adressen/<bagId>/afvalstromen
+    """
+    name = 'HVC Groep'
+    _HOSTNAME = 'inzamelkalender.hvcgroep.nl'
+
+    def _get_bag_id(self, hostname, zipcode, housenr, housenrsuf):
+        # HVC gebruikt /adressen/ (zonder /rest/) en dubbele punt als separator
+        addr = f'{zipcode}:{housenr}'
+        if housenrsuf:
+            addr += f':{housenrsuf}'
+        url = f'https://{hostname}/adressen/{addr}'
+        self._log(f'GET {url}')
+        raw = http_get(url)
+        if not raw or raw.strip().startswith('[]'):
+            self._error(f'Empty or [] address response for {addr}')
+            return ''
+        try:
+            adata = json.loads(raw)
+        except json.JSONDecodeError:
+            self._error(f'Address JSON parse error: {raw[:200]!r}')
+            return ''
+        if not isinstance(adata, list) or not adata:
+            self._error(f'Unexpected address response format: {raw[:200]!r}')
+            return ''
+        bag_id = ''
+        for record in adata:
+            if not isinstance(record, dict):
+                continue
+            bag_id = record.get('bagId', '') or record.get('bagid', '')
+            if record.get('huisletter', '') == housenrsuf:
+                break
+        if not bag_id:
+            self._error(f'bagId missing in response keys: {list(adata[0].keys()) if adata else []}')
+        return bag_id
+
+    def fetch(self, zipcode, housenr, housenrsuf, extra):
+        return super().fetch(zipcode, housenr, housenrsuf, self._HOSTNAME)
+
+
+# --------------------------------------------------------------------------------------------
 # Module registry
 # --------------------------------------------------------------------------------------------
 
@@ -1394,6 +1422,7 @@ MODULES: Dict[str, GarbageModule] = {
     '15': CsvFileModule(),
     '16': AfvalInfoModule(),
     '17': ReinisModule(),
+    '18': HvcGroepModule(),
 }
 
 # --------------------------------------------------------------------------------------------
