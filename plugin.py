@@ -5,11 +5,11 @@
 # Retrieves garbage pickup schedules and updates a Domoticz Text device.
 
 """
-<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick" version="1.1.1"
+<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick" version="1.1.2"
     externallink="https://github.com/MadPatrick/Domoticz_Garbage">
     <description><br/>
         <h2>Garbage Calendar</h2>
-        <p>Version 1.1.1</p>
+        <p>Version 1.1.2</p>
         <p>Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.</p>
         <p>Provider : Choose the module that matches your municipality.</p>
         <p>Extra field : depends on the selected module:</p>
@@ -330,6 +330,59 @@ def http_post(url: str, data: bytes, headers: Optional[Dict] = None, timeout: in
 
 
 # --------------------------------------------------------------------------------------------
+# Log redaction helper - many provider modules embed the user's postcode/house
+# number (and, for a couple of modules, a hardcoded password) directly in the
+# request URL. Those values are personal / credential data and must never be
+# written verbatim to the Domoticz log, even though the real values are still
+# needed for the actual outgoing HTTP request.
+# --------------------------------------------------------------------------------------------
+
+# Query-string parameter names (case-insensitive, exact match) whose value is
+# masked before a URL is logged.
+_REDACT_QUERY_KEYS = {
+    'password', 'apikey', 'api_key', 'key', 'secret', 'token', 'refresh_token',
+    'authorization',
+    'postcode', 'postalcode', 'postal_code', 'zipcode', 'zip_code', 'zipcodeid', 'pc',
+    'huisnummer', 'housenumber', 'house_number', 'house_number_extension',
+    'housenumberaddition', 'housenumbersuffix', 'huisnr', 'nr', 'toevoeging',
+    'addition', 'huisletter',
+}
+
+
+def redact_url(url: str, *extra_values: str) -> str:
+    """Return *url* with sensitive values masked, safe to write to the log.
+
+    Masks the value of any query-string parameter whose name matches
+    ``_REDACT_QUERY_KEYS`` (passwords, API keys, postcode/house number and
+    similar), and additionally masks any literal occurrence of
+    *extra_values* (e.g. the raw zipcode/house number used for this
+    request) anywhere in the URL - this also covers values embedded in the
+    URL path rather than the query string. The original, unredacted *url*
+    is unaffected - only use the return value for logging.
+    """
+    if not url:
+        return url
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        if parsed.query:
+            pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+            redacted_pairs = [
+                (k, '***' if k.lower() in _REDACT_QUERY_KEYS else v)
+                for k, v in pairs
+            ]
+            url = urllib.parse.urlunsplit((
+                parsed.scheme, parsed.netloc, parsed.path,
+                urllib.parse.urlencode(redacted_pairs, safe='*'), parsed.fragment,
+            ))
+    except Exception:
+        pass
+    for value in extra_values:
+        if value:
+            url = url.replace(value, '***')
+    return url
+
+
+# --------------------------------------------------------------------------------------------
 # Base module class
 # --------------------------------------------------------------------------------------------
 
@@ -372,7 +425,7 @@ class MijnAfvalwijzerModule(GarbageModule):
     def fetch(self, zipcode, housenr, housenrsuf, extra):
         host = extra.strip() if extra.strip() else 'www.mijnafvalwijzer.nl'
         url = f'https://{host}/nl/{zipcode}/{housenr}{housenrsuf}'
-        self._log(f'GET {url}')
+        self._log(f'GET {redact_url(url, zipcode, f"{housenr}{housenrsuf}")}')
         html = http_get(url)
         if not html:
             self._error('Empty response')
@@ -432,7 +485,7 @@ class MijnAfvalwijzerApiModule(GarbageModule):
             f'&app_name=afvalwijzer&platform=phone&mobiletype=android'
             f'&afvaldata={year}-01-01&version=58&langs=nl'
         )
-        self._log(f'GET {url}')
+        self._log(f'GET {redact_url(url)}')
         raw = http_get(url)
         if not raw:
             self._error('Empty response')
@@ -555,7 +608,7 @@ class RovaApiModule(GarbageModule):
                 f'?postalcode={zipcode}&houseNumber={housenr}'
                 f'&addition={housenrsuf or ""}&year={year}'
             )
-            self._log(f'GET {url}')
+            self._log(f'GET {redact_url(url)}')
             raw = http_get(url)
             if not raw:
                 continue
@@ -595,7 +648,7 @@ class Rd4ApiModule(GarbageModule):
                 f'?postal_code={zipcode}&house_number={housenr}'
                 f'&house_number_extension={housenrsuf or ""}&year={year}'
             )
-            self._log(f'GET {url}')
+            self._log(f'GET {redact_url(url)}')
             raw = http_get(url)
             if not raw:
                 continue
@@ -628,7 +681,7 @@ class OpzetModule(GarbageModule):
 
     def _get_bag_id(self, hostname: str, zipcode: str, housenr: str, housenrsuf: str) -> str:
         url = f'https://{hostname}/rest/adressen/{zipcode}-{housenr}'
-        self._log(f'GET {url}')
+        self._log(f'GET {redact_url(url, zipcode, housenr)}')
         raw = http_get(url)
         if not raw or raw.strip().startswith('[]'):
             self._error('Empty or [] address response')
@@ -812,7 +865,7 @@ class RecycleAppBeModule(GarbageModule):
             f'?zipcodeId={postcode_id}&streetId={street_id}'
             f'&houseNumber={housenr}&fromDate={start}&untilDate={end}&size=100'
         )
-        self._log(f'GET {url}')
+        self._log(f'GET {redact_url(url)}')
         raw = http_get(url, headers=auth_headers)
         try:
             cdata = json.loads(raw)
@@ -959,7 +1012,7 @@ class BurgerportaalModule(GarbageModule):
             return []
 
         url = f'{self._GCF_BASE}/organisations/{org_id}/address?zipcode={zipcode.upper()}&housenumber={thnr}'
-        self._log(f'GET {url}')
+        self._log(f'GET {redact_url(url)}')
         raw = http_get(url, headers={'authorization': id_token})
         try:
             adata = json.loads(raw)
@@ -1011,7 +1064,11 @@ class BurgerportaalModule(GarbageModule):
             with open(self._token_file, 'w') as f:
                 f.write(token)
         except Exception:
-            pass
+            return
+        try:
+            os.chmod(self._token_file, 0o600)
+        except OSError as exc:
+            self._debug(f'Could not restrict permissions on {self._token_file}: {exc}')
 
     def _signup_and_get_token(self):
         url = (f'https://www.googleapis.com/identitytoolkit/v3/relyingparty/'
@@ -1074,7 +1131,7 @@ class DeAfvalAppModule(GarbageModule):
             f'?service=OPHAALSCHEMA&land=NL&postcode={zipcode}'
             f'&straatId=0&huisnr={housenr}{housenrsuf or ""}'
         )
-        self._log(f'GET {url}')
+        self._log(f'GET {redact_url(url)}')
         raw = http_get(url)
         if not raw:
             self._error('Empty response')
@@ -1118,7 +1175,7 @@ class ZuidLimburgModule(GarbageModule):
             f'https://www.rd4info.nl/NSI/Burger/Aspx/afvalkalender_public_text.aspx'
             f'?pc={zipcode}&nr={housenr}{housenrsuf or ""}&t'
         )
-        self._log(f'GET {url}')
+        self._log(f'GET {redact_url(url)}')
         html = http_get(url)
         if not html:
             self._error('Empty response')
@@ -1162,7 +1219,7 @@ class ZuidLimburgModule(GarbageModule):
 
 class MontferlandModule(GarbageModule):
     name = 'Montferland'
-    _BASE = 'http://afvalwijzer.afvaloverzicht.nl'
+    _BASE = 'https://afvalwijzer.afvaloverzicht.nl'
     _PWD = urllib.parse.quote('gsd$2014')
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
@@ -1172,7 +1229,7 @@ class MontferlandModule(GarbageModule):
             f'{self._BASE}/Login.ashx?Username=GSD&Password={self._PWD}'
             f'&Postcode={zipcode}&Huisnummer={housenr}&Toevoeging={housenrsuf or ""}'
         )
-        self._log(f'GET {url}')
+        self._log(f'GET {redact_url(url)}')
         raw = http_get(url)
         if not raw or raw.strip().startswith('[]'):
             self._error('Could not get address info - check Zipcode/Housenr')
@@ -1197,7 +1254,7 @@ class MontferlandModule(GarbageModule):
                 f'&Username=GSD&Password={self._PWD}'
                 f'&ADR_ID={adres_id}&Jaar={year}&Date={date_str}'
             )
-            self._log(f'GET {url2}')
+            self._log(f'GET {redact_url(url2)}')
             raw2 = http_get(url2)
             if not raw2 or raw2.strip().startswith('[]'):
                 continue
@@ -1287,7 +1344,7 @@ class AfvalInfoModule(GarbageModule):
             'HouseNumberSuffix': housenrsuf or '',
         })
         url = f'{self._BASE}?{params}'
-        self._log(f'GET {url}')
+        self._log(f'GET {redact_url(url)}')
         raw = http_get(url)
         if not raw:
             self._error('Empty response')
@@ -1328,7 +1385,7 @@ class ReinisModule(OpzetApiModule):
 
     def _get_bag_id(self, hostname, zipcode, housenr, housenrsuf):
         url = f'https://{hostname}/adressen/{zipcode}:{housenr}'
-        self._debug(f'GET {url}')
+        self._debug(f'GET {redact_url(url, zipcode, housenr)}')
         raw = http_get(url)
         if not raw or raw.strip().startswith('[]'):
             self._error('Empty or [] address response')
@@ -1372,7 +1429,7 @@ class HvcGroepModule(OpzetApiModule):
         if housenrsuf:
             addr += f':{housenrsuf}'
         url = f'https://{hostname}/adressen/{addr}'
-        self._log(f'GET {url}')
+        self._log(f'GET {redact_url(url, zipcode, housenr, housenrsuf)}')
         raw = http_get(url)
         if not raw or raw.strip().startswith('[]'):
             self._error(f'Empty or [] address response for {addr}')
@@ -1433,6 +1490,10 @@ class BasePlugin:
     UNIT_TEXT   = 1  # Garbage Calendar text-device
     UNIT_NOTIFY = 2  # Garbae notification device
     HEARTBEAT_SECS = 30
+    # Minimum time between retries of a failing fetch (empty result or
+    # exception), so a persistently failing remote site is not hammered
+    # every single 30s heartbeat.
+    FETCH_RETRY_BACKOFF_SECS = 20 * 60
 
     def __init__(self):
         self._module: Optional[GarbageModule] = None
@@ -1452,8 +1513,16 @@ class BasePlugin:
         self._notify_subsystem = ''
         self._notify_sent_date: Optional[datetime.date] = None
         self._last_fetch_date: Optional[datetime.date] = None
+        self._last_failed_fetch_time: Optional[datetime.datetime] = None
         self._cached_results: List[Dict] = []
         self._fetching = False
+        # Set by the worker thread (_do_fetch) when a fetch attempt has
+        # completed and _cached_results / _last_fetch_date may have
+        # changed. Consumed by onHeartbeat (the main/callback thread) to
+        # decide when to touch Devices[...] / send notifications - the
+        # worker thread itself must never touch those, they are not
+        # thread-safe.
+        self._results_ready = False
         self._lock = threading.Lock()
         self.imageID = -1
         self._label_today = _CONFIG_DEFAULTS['LabelToday']
@@ -1545,7 +1614,19 @@ class BasePlugin:
         today = now.date()
 
         with self._lock:
+            results_ready = self._results_ready
+            self._results_ready = False
             already_fetched_today = (self._last_fetch_date == today)
+            last_failed = self._last_failed_fetch_time
+
+        # Fresh results (or a failed attempt) came in from the worker thread
+        # since the last heartbeat - this is the (main/callback) thread that
+        # is allowed to touch Devices[...] / send notifications, so do that
+        # update here rather than from the worker thread.
+        if results_ready:
+            self._update_device()
+        elif already_fetched_today:
+            self._update_device()
 
         if not already_fetched_today:
             past_update_time = (
@@ -1553,9 +1634,12 @@ class BasePlugin:
                 (now.hour == self._update_hour and now.minute >= self._update_min)
             )
             if past_update_time:
+                if (
+                    last_failed is not None and
+                    (now - last_failed).total_seconds() < self.FETCH_RETRY_BACKOFF_SECS
+                ):
+                    return
                 self._trigger_fetch()
-        else:
-            self._update_device()
 
     def _create_text_device(self):
         image_kwarg = {'Image': self.imageID} if self.imageID >= 0 else {}
@@ -1576,6 +1660,13 @@ class BasePlugin:
         t.start()
 
     def _do_fetch(self):
+        # Runs in a background threading.Thread (see _trigger_fetch). It must
+        # do ONLY the network fetch/parsing here and hand the outcome back
+        # through _cached_results/_last_fetch_date/_last_failed_fetch_time -
+        # it must NEVER touch Devices[...] or call Domoticz.SendNotification()
+        # itself, since those are not safe to use outside Domoticz's own
+        # callback thread. The actual device/notification update happens in
+        # onHeartbeat (main thread) once _results_ready is seen set.
         try:
             Domoticz.Log(f'Fetching calendar data from {self._module.name}...')
             results = self._module.fetch(
@@ -1585,12 +1676,30 @@ class BasePlugin:
                 self._extra,
             )
             with self._lock:
-                self._cached_results = results
-                self._last_fetch_date = datetime.date.today()
+                if results:
+                    # A genuinely non-empty, successfully parsed result -
+                    # this counts as "fetched today" so we don't retry
+                    # until the next scheduled UpdateTime.
+                    self._cached_results = results
+                    self._last_fetch_date = datetime.date.today()
+                    self._last_failed_fetch_time = None
+                else:
+                    # An empty result can't be distinguished here from a
+                    # silently-swallowed HTTP/parse failure inside the
+                    # module, so treat it like a failure: don't mark today
+                    # as fetched (that would delay the retry until the next
+                    # UpdateTime) and record the failure time so the
+                    # retry-backoff in onHeartbeat applies. Keep whatever
+                    # was cached previously rather than overwriting good
+                    # data with an empty list.
+                    self._last_failed_fetch_time = datetime.datetime.now()
+                self._results_ready = True
             Domoticz.Log(f'Fetch complete: {len(results)} upcoming event(s) found')
-            self._update_device()
         except Exception as e:
             Domoticz.Error(f'Fetch error: {e}')
+            with self._lock:
+                self._last_failed_fetch_time = datetime.datetime.now()
+                self._results_ready = True
         finally:
             with self._lock:
                 self._fetching = False
