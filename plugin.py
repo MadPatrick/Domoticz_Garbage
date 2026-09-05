@@ -5,11 +5,11 @@
 # Retrieves garbage pickup schedules and updates a Domoticz Text device.
 
 """
-<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick" version="1.1.2"
+<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick" version="1.1.3"
     externallink="https://github.com/MadPatrick/Domoticz_Garbage">
     <description><br/>
         <h2>Garbage Calendar</h2>
-        <p>Version 1.1.2</p>
+        <p>Version 1.1.3</p>
         <p>Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.</p>
         <p>Provider : Choose the module that matches your municipality.</p>
         <p>Extra field : depends on the selected module:</p>
@@ -107,7 +107,7 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import threading
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Callable, Any
 
 # --------------------------------------------------------------------------------------------
 # config.txt helper
@@ -414,6 +414,44 @@ class GarbageModule:
     def _make_entry(gtype: str, d: datetime.date, wdesc: str = '', icon_url: str = '') -> Dict:
         return {'type': gtype, 'date': d, 'wdesc': wdesc, 'icon_url': icon_url}
 
+    def _fetch_yearly(
+        self,
+        url_for_year: Callable[[int], str],
+        parse_records: Callable[[Any, datetime.date], List[Dict]],
+        log_fn: Optional[Callable[[str], None]] = None,
+        max_results: int = 10,
+    ) -> List[Dict]:
+        """Shared scaffolding for providers that fetch a calendar year-by-year:
+        build a URL per year via url_for_year(year), GET it, JSON-decode the
+        body, hand the parsed JSON to parse_records(parsed, today) to extract
+        this provider's entries, stop early once max_results entries have
+        been collected across years, then sort by date.
+
+        Providers differ enough in URL shape, JSON container shape and
+        per-record field names that only this common fetch/decode/sort
+        scaffold is shared - each provider's own parse_records callback still
+        owns its specific parsing, so behaviour per provider is unchanged.
+        """
+        if log_fn is None:
+            log_fn = self._log
+        today = datetime.date.today()
+        results: List[Dict] = []
+        for year in [today.year, today.year + 1]:
+            url = url_for_year(year)
+            log_fn(f'GET {redact_url(url)}')
+            raw = http_get(url)
+            if not raw:
+                continue
+            try:
+                parsed = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            results.extend(parse_records(parsed, today))
+            if len(results) >= max_results:
+                break
+        results.sort(key=lambda x: x['date'])
+        return results
+
 
 # --------------------------------------------------------------------------------------------
 # Module 1: m_mijnafvalwijzer  (HTML scraping)
@@ -471,6 +509,10 @@ class MijnAfvalwijzerModule(GarbageModule):
 
 class MijnAfvalwijzerApiModule(GarbageModule):
     name = 'MijnAfvalwijzerAPI'
+    # Public, app-level API key extracted from MijnAfvalwijzer's own Android app
+    # (not a per-user credential - every install of that app ships this same
+    # value). Rotating or hiding it here would not add any real protection,
+    # since it's already public in the app itself.
     _API_KEY = '5ef443e778f41c4f75c69459eea6e6ae0c2d92de729aa0fc61653815fbd6a8ca'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
@@ -600,36 +642,27 @@ class RovaApiModule(GarbageModule):
     name = 'RovaAPI'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
-        today = datetime.date.today()
-        results = []
-        for year in [today.year, today.year + 1]:
-            url = (
+        def url_for_year(year):
+            return (
                 f'https://www.rova.nl/api/waste-calendar/year'
                 f'?postalcode={zipcode}&houseNumber={housenr}'
                 f'&addition={housenrsuf or ""}&year={year}'
             )
-            self._log(f'GET {redact_url(url)}')
-            raw = http_get(url)
-            if not raw:
-                continue
-            try:
-                items = json.loads(raw)
-            except json.JSONDecodeError:
-                continue
+
+        def parse_records(items, today):
+            entries = []
             if not isinstance(items, list):
-                continue
+                return entries
             for record in items:
                 waste_type = record.get('wasteType', {}) or {}
                 gtype = waste_type.get('code', '') if isinstance(waste_type, dict) else ''
                 wdesc = waste_type.get('title', '') if isinstance(waste_type, dict) else ''
                 d = parse_iso_date(record.get('date', ''))
                 if d and d >= today:
-                    results.append(self._make_entry(gtype, d, wdesc))
-            if len(results) >= 10:
-                break
+                    entries.append(self._make_entry(gtype, d, wdesc))
+            return entries
 
-        results.sort(key=lambda x: x['date'])
-        return results
+        return self._fetch_yearly(url_for_year, parse_records)
 
 
 # --------------------------------------------------------------------------------------------
@@ -640,36 +673,27 @@ class Rd4ApiModule(GarbageModule):
     name = 'RD4API'
 
     def fetch(self, zipcode, housenr, housenrsuf, extra):
-        today = datetime.date.today()
-        results = []
-        for year in [today.year, today.year + 1]:
-            url = (
+        def url_for_year(year):
+            return (
                 f'https://data.rd4.nl/api/v1/waste-calendar'
                 f'?postal_code={zipcode}&house_number={housenr}'
                 f'&house_number_extension={housenrsuf or ""}&year={year}'
             )
-            self._log(f'GET {redact_url(url)}')
-            raw = http_get(url)
-            if not raw:
-                continue
-            try:
-                jdata = json.loads(raw)
-            except json.JSONDecodeError:
-                continue
+
+        def parse_records(jdata, today):
+            entries = []
             outer = jdata.get('data', {}).get('items', [[]])
             items = outer[0] if outer and isinstance(outer, list) else []
             if not isinstance(items, list):
-                continue
+                return entries
             for record in items:
                 gtype = record.get('type', '')
                 d = parse_iso_date(record.get('date', ''))
                 if d and d >= today:
-                    results.append(self._make_entry(gtype, d, gtype))
-            if len(results) >= 10:
-                break
+                    entries.append(self._make_entry(gtype, d, gtype))
+            return entries
 
-        results.sort(key=lambda x: x['date'])
-        return results
+        return self._fetch_yearly(url_for_year, parse_records)
 
 
 # --------------------------------------------------------------------------------------------
@@ -747,7 +771,6 @@ class OpzetApiModule(OpzetModule):
             self._error('Hostname required (use the Extra field)')
             return []
 
-        today = datetime.date.today()
         bag_id = self._get_bag_id(hostname, zipcode, housenr, housenrsuf)
         if not bag_id:
             self._error('No bagId found - check Zipcode, Housenr and Hostname')
@@ -772,17 +795,11 @@ class OpzetApiModule(OpzetModule):
             except json.JSONDecodeError:
                 pass
 
-        results = []
-        for year in [today.year, today.year + 1]:
-            url = f'https://{hostname}/rest/adressen/{bag_id}/kalender/{year}'
-            self._debug(f'GET {url}')
-            raw = http_get(url)
-            if not raw or raw.strip().startswith('[]'):
-                continue
-            try:
-                cal_data = json.loads(raw)
-            except json.JSONDecodeError:
-                continue
+        def url_for_year(year):
+            return f'https://{hostname}/rest/adressen/{bag_id}/kalender/{year}'
+
+        def parse_records(cal_data, today):
+            entries = []
             for record in cal_data:
                 if not isinstance(record, dict):
                     continue
@@ -794,12 +811,10 @@ class OpzetApiModule(OpzetModule):
                 icon_url = icon_map.get(type_id, '')
                 d = parse_iso_date(dstr)
                 if d and d >= today:
-                    results.append(self._make_entry(gtype, d, icon_url=icon_url))
-            if len(results) >= 10:
-                break
+                    entries.append(self._make_entry(gtype, d, icon_url=icon_url))
+            return entries
 
-        results.sort(key=lambda x: x['date'])
-        return results
+        return self._fetch_yearly(url_for_year, parse_records, log_fn=self._debug)
 
 
 # --------------------------------------------------------------------------------------------
@@ -809,6 +824,10 @@ class OpzetApiModule(OpzetModule):
 class RecycleAppBeModule(GarbageModule):
     name = 'RecycleApp.be'
     _BASE_URL = 'https://api.fostplus.be/recycle-public/app/v1'
+    # Public, app-level API secret extracted from the RecyclApp mobile app
+    # (not a per-user credential - every install of that app ships this same
+    # value). Rotating or hiding it here would not add any real protection,
+    # since it's already public in the app itself.
     _SECRET = (
         'Op2tDi2pBmh1wzeC5TaN2U3knZan7ATcfOQgxh4vqC0mDKmnPP2qzoQusmInpglfIkxx8SZrasBqi5zgMSvy'
         'HggK9j6xCQNQ8xwPFY2o03GCcQfcXVOyKsvGWLze7iwcfcgk2Ujpl0dmrt3hSJMCDqzAlvTrsvAEiaSzC9hK'
@@ -984,6 +1003,11 @@ class OmrinModule(GarbageModule):
 
 class BurgerportaalModule(GarbageModule):
     name = 'Burgerportaal'
+    # Public Firebase Web API key extracted from Burgerportaal's own web/app
+    # client (not a per-user credential or a backend secret - Firebase Web API
+    # keys identify the Firebase project, not the caller, and are commonly
+    # embedded in every client of an app). Rotating or hiding it here would
+    # not add any real protection, since it's already public in that client.
     _FIREBASE_KEY = 'AIzaSyA6NkRqJypTfP-cjWzrZNFJzPUbBaGjOdk'
     _BP_CODES: Dict[str, str] = {
         'assen': '138204213565303512',
@@ -1246,34 +1270,27 @@ class MontferlandModule(GarbageModule):
             self._error('No AdresID or AdministratieID in response')
             return []
 
-        results = []
-        for year in [today.year, today.year + 1]:
-            date_str = urllib.parse.quote(today.strftime('%d/%m/%Y 01:00:00 AM'))
-            url2 = (
+        date_str = urllib.parse.quote(today.strftime('%d/%m/%Y 01:00:00 AM'))
+
+        def url_for_year(year):
+            return (
                 f'{self._BASE}/OphaalDatums.ashx?ADM_ID={admin_id}'
                 f'&Username=GSD&Password={self._PWD}'
                 f'&ADR_ID={adres_id}&Jaar={year}&Date={date_str}'
             )
-            self._log(f'GET {redact_url(url2)}')
-            raw2 = http_get(url2)
-            if not raw2 or raw2.strip().startswith('[]'):
-                continue
-            try:
-                items = json.loads(raw2)
-            except json.JSONDecodeError:
-                continue
+
+        def parse_records(items, today):
+            entries = []
             for record in items:
                 if not isinstance(record, dict):
                     continue
                 gtype = record.get('Soort', '')
                 d = parse_iso_date(record.get('Datum', ''))
                 if d and d >= today:
-                    results.append(self._make_entry(gtype, d))
-            if len(results) >= 10:
-                break
+                    entries.append(self._make_entry(gtype, d))
+            return entries
 
-        results.sort(key=lambda x: x['date'])
-        return results
+        return self._fetch_yearly(url_for_year, parse_records)
 
 
 # --------------------------------------------------------------------------------------------
