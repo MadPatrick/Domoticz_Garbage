@@ -5,59 +5,60 @@
 # Retrieves garbage pickup schedules and updates a Domoticz Text device.
 
 """
-<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick" version="1.1.3"
+<plugin key="GarbageCalendar" name="Garbage Calendar" author="MadPatrick" version="1.2.0"
     externallink="https://github.com/MadPatrick/Domoticz_Garbage">
-    <description><br/>
+    <description>
         <h2>Garbage Calendar</h2>
-        <p>Version 1.1.3</p>
+        <p><strong>Version:</strong> 1.2.0</p>
         <p>Retrieves your waste collection calendar and displays the upcoming collection dates in a Domoticz text device.</p>
-        <p>Provider : Choose the module that matches your municipality.</p>
-        <p>Extra field : depends on the selected module:</p>
-        <br/>
-        <table>
+        <h3>Configuration</h3>
+        <p>Choose the <strong>Provider</strong> that matches your municipality. The <strong>Extra</strong> field's meaning depends on the selected provider:</p>
+        <table style="border-collapse:collapse; margin:6px 0 12px 0;">
             <tbody>
             <tr>
-                <th>Module</th>
-                <th>Extra field value</th>
+                <th style="text-align:left; padding:3px 16px 3px 0; border-bottom:1px solid #999;">Provider</th>
+                <th style="text-align:left; padding:3px 0; border-bottom:1px solid #999;">Extra field value</th>
             </tr>
             <tr>
-                <td>opzet / opzet_api</td>
-                <td>hostname (e.g. inzamelkalender.hvcgroep.nl)</td>
+                <td style="padding:3px 16px 3px 0;">opzet / opzet_api</td>
+                <td style="padding:3px 0;">hostname (e.g. inzamelkalender.hvcgroep.nl)</td>
             </tr>
             <tr>
-                <td>ximmio</td>
-                <td>Company code (open municipality website, press F12, search controller.js for companyCode)</td>
+                <td style="padding:3px 16px 3px 0;">ximmio</td>
+                <td style="padding:3px 0;">Company code (open municipality website, press F12, search controller.js for companyCode)</td>
             </tr>
             <tr>
-                <td>recycleapp-be</td>
-                <td>street name</td>
+                <td style="padding:3px 16px 3px 0;">recycleapp-be</td>
+                <td style="padding:3px 0;">street name</td>
             </tr>
             <tr>
-                <td>burgerportaal</td>
-                <td>BPName (assen / bar / rmn)</td>
+                <td style="padding:3px 16px 3px 0;">burgerportaal</td>
+                <td style="padding:3px 0;">BPName (assen / bar / rmn)</td>
             </tr>
             <tr>
-                <td>csv_file</td>
-                <td>full path to the CSV file</td>
+                <td style="padding:3px 16px 3px 0;">csv_file</td>
+                <td style="padding:3px 0;">full path to the CSV file</td>
             </tr>
             <tr>
-                <td>afvalinfo</td>
-                <td>municipality name (e.g. sliedrecht, papendrecht)</td>
+                <td style="padding:3px 16px 3px 0;">afvalinfo</td>
+                <td style="padding:3px 0;">municipality name (e.g. sliedrecht, papendrecht)</td>
             </tr>
             <tr>
-                <td>mijnafvalwijzer / mijnafvalwijzer_api</td>
-                <td>optional hostname override</td>
+                <td style="padding:3px 16px 3px 0;">mijnafvalwijzer / mijnafvalwijzer_api</td>
+                <td style="padding:3px 0;">optional hostname override</td>
             </tr>
             <tr>
-                <td>other modules</td>
-                <td>leave empty</td>
+                <td style="padding:3px 16px 3px 0;">other providers</td>
+                <td style="padding:3px 0;">leave empty</td>
             </tr>
             </tbody>
         </table>
-        <br/>
     </description>
     <params>
-        <param field="Mode1" label="Provider" width="280px" required="true" default="2">
+        <param field="Provider" label="Provider" width="280px" required="true" default="2">
+            <description>
+                <h4 style="margin:4px 0 6px 0;">Provider</h4>
+            </description>
             <options>
                 <option label="1 - mijnafvalwijzer (HTML)" value="1" />
                 <option label="2 - mijnafvalwijzer_api" value="2" default="true" />
@@ -79,18 +80,29 @@
                 <option label="18 - hvc_api (HVC Groep)" value="18" />
             </options>
         </param>
-        <param field="Mode2" label="Zipcode" width="100px" required="false" default="" />
-        <param field="Mode3" label="House number" width="75px" required="false" default="" />
-        <param field="Mode4" label="Suffix" width="75px" required="false" default="" />
-        <param field="Mode5" label="Extra" width="300px" default="">
-        <description><br/>Hostname / Street / BPName / Companycode / CSV-pad / City(afvalinfo)</description>
+        <param field="ExtraValue" label="Extra" width="300px" default="">
+            <description><br/>Hostname / Street / BPName / Companycode / CSV-pad / City(afvalinfo) - depends on the selected provider, see the table above.</description>
         </param>
-
-        <param field="Mode6" label="Notification" width="100px">
+        <param field="Zipcode" label="Zipcode" width="100px" required="false" default="">
+            <description>
+                <h4 style="margin:14px 0 6px 0; border-top:1px solid #ccc; padding-top:8px;">Address</h4>
+            </description>
+        </param>
+        <param field="HouseNumber" label="House number" width="75px" required="false" default="" />
+        <param field="Suffix" label="Suffix" width="75px" required="false" default="" />
+        <param field="Notification" label="Notification" width="100px">
+            <description>
+                <h4 style="margin:14px 0 6px 0; border-top:1px solid #ccc; padding-top:8px;">Notification</h4>
+            </description>
             <options>
                 <option label="No" value="false" default="true"/>
                 <option label="Yes" value="true"/>
             </options>
+        </param>
+        <param field="EnableDebug" type="boolean" label="Debug logging" default="">
+            <description>
+                <h4 style="margin:14px 0 6px 0; border-top:1px solid #ccc; padding-top:8px;">Logging</h4>
+            </description>
         </param>
     </params>
 </plugin>
@@ -1545,15 +1557,65 @@ class BasePlugin:
         self._label_today = _CONFIG_DEFAULTS['LabelToday']
         self._label_tomorrow = _CONFIG_DEFAULTS['LabelTomorrow']
         self._label_nodata = _CONFIG_DEFAULTS['LabelNoData']
+        self.debug = False
+
+    def _read_migrated_parameter(self, field, legacy_field, default=""):
+        """Read a named setting, falling back to its former ModeX field.
+
+        Empty defaults on the new settings make existing Domoticz hardware
+        configurations continue to work until they are saved with the new
+        field names.
+        """
+        raw = Parameters.get(field, "")
+        if raw is None or str(raw).strip() == "":
+            raw = Parameters.get(legacy_field, "")
+        if raw is None or str(raw).strip() == "":
+            return default
+        return raw
+
+    def _read_boolean_parameter(self, field, default=False):
+        raw = Parameters.get(field, "true" if default else "false")
+        return str(raw).strip().lower() in ("true", "1", "yes", "on")
 
     def onStart(self):
         Domoticz.Heartbeat(self.HEARTBEAT_SECS)
 
-        module_key = Parameters.get('Mode1', '2').strip()
-        self._zipcode = Parameters.get('Mode2', '').strip()
-        self._housenr = Parameters.get('Mode3', '').strip()
-        self._housenrsuf = Parameters.get('Mode4', '').strip()
-        self._extra = Parameters.get('Mode5', '').strip()
+        self.debug = self._read_boolean_parameter('EnableDebug', False)
+        if self.debug:
+            Domoticz.Debugging(1)
+            Domoticz.Log('Debug logging enabled')
+
+        # Existing hardware entries configured before this plugin switched to
+        # the named Extended Settings fields still work via the ModeX
+        # fallback below, but the new fields themselves stay empty in the
+        # hardware edit screen until someone fills them in there. Warn once
+        # per start so that isn't a silent trap - re-entering the values
+        # shown below into the new fields (then saving) finishes the move.
+        legacy_in_use = {
+            'Provider': (Parameters.get('Provider', ''), Parameters.get('Mode1', '')),
+            'Zipcode': (Parameters.get('Zipcode', ''), Parameters.get('Mode2', '')),
+            'HouseNumber': (Parameters.get('HouseNumber', ''), Parameters.get('Mode3', '')),
+            'Suffix': (Parameters.get('Suffix', ''), Parameters.get('Mode4', '')),
+            'Extra': (Parameters.get('ExtraValue', ''), Parameters.get('Mode5', '')),
+            'Notification': (Parameters.get('Notification', ''), Parameters.get('Mode6', '')),
+        }
+        fields_on_fallback = [
+            name for name, (new_val, old_val) in legacy_in_use.items()
+            if not str(new_val).strip() and str(old_val).strip()
+        ]
+        if fields_on_fallback:
+            Domoticz.Log(
+                'Still using legacy Mode1-6 values for: ' + ', '.join(fields_on_fallback) + '. '
+                'Open this hardware\'s settings, copy those values into the new fields with the '
+                'same names, and save once to finish moving to the new settings layout - the '
+                'values currently in use are logged below.'
+            )
+
+        module_key = str(self._read_migrated_parameter('Provider', 'Mode1', '2')).strip()
+        self._zipcode = str(self._read_migrated_parameter('Zipcode', 'Mode2', '')).strip()
+        self._housenr = str(self._read_migrated_parameter('HouseNumber', 'Mode3', '')).strip()
+        self._housenrsuf = str(self._read_migrated_parameter('Suffix', 'Mode4', '')).strip()
+        self._extra = str(self._read_migrated_parameter('ExtraValue', 'Mode5', '')).strip()
         self._date_fmt = 'wd dd mmm'
 
         cfg = _read_config()
@@ -1570,7 +1632,7 @@ class BasePlugin:
 
         self._today_to_min = _parse_hhmm_to_min(cfg.get('TodayTime', '16:00'), 16 * 60)
         self._tomorrow_until_min = _parse_hhmm_to_min(cfg.get('TomorrowTime', '16:00'), 16 * 60)
-        self._notify_enabled = Parameters.get('Mode6', 'false').strip().lower() == 'true'
+        self._notify_enabled = str(self._read_migrated_parameter('Notification', 'Mode6', 'false')).strip().lower() == 'true'
         self._notify_time_min = _parse_hhmm_to_min(cfg.get('NotifyTime', '07:00'), 7 * 60)
         try:
             self._notify_level = max(-2, min(2, int(cfg.get('NotifyLevel', '1') or '1')))
@@ -1594,7 +1656,7 @@ class BasePlugin:
 
         self._module = MODULES.get(module_key)
         if not self._module:
-            Domoticz.Error(f'Unknown module key: "{module_key}". Check Mode1 parameter.')
+            Domoticz.Error(f'Unknown module key: "{module_key}". Check Provider parameter.')
             return
 
         Domoticz.Log(
