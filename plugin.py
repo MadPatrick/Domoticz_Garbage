@@ -1645,10 +1645,18 @@ class BasePlugin:
         self._label_nodata = cfg.get('LabelNoData', _CONFIG_DEFAULTS['LabelNoData']).strip() or _CONFIG_DEFAULTS['LabelNoData']
 
         try:
-            if "Garbage" not in Images:
+            # The zip file on disk keeps its historical short name, but the
+            # icon's Base (in icons.txt, used as the Images dict key) must
+            # start with this plugin's key ("GarbageCalendar") - Domoticz
+            # only loads a plugin's pre-existing custom icons into Images at
+            # startup when Base LIKE '<PluginKey>%'. The short "Garbage"
+            # Base used before didn't satisfy that, so Images never
+            # contained it on restart and it was silently recreated (and
+            # re-logged as "created") every single time instead of found.
+            if "GarbageCalendar" not in Images:
                 Domoticz.Image("Garbage.zip").Create()
-            if "Garbage" in Images:
-                self.imageID = Images["Garbage"].ID
+            if "GarbageCalendar" in Images:
+                self.imageID = Images["GarbageCalendar"].ID
             else:
                 Domoticz.Error("Unable to load icon pack 'Garbage.zip'")
         except Exception as e:
